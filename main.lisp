@@ -118,23 +118,6 @@
 (command-desc 'focus 'left up down (concat-str "a" "b") (intern "ABC"))
 (command-desc resize -l -v "+1")
 
-(defun spacing-join-fn (&rest args)
-  (if (cdr args)
-    (apply #'concat-str (drop (mapcan (papply (list " ")) args)))
-    (car args)))
-
-(spacing-join-fn "ab" "cd" "ef")
-
-(defun command-desc-fn (command &rest args)
-  (concat-str "'"
-              (resolve-string command)
-              " "
-              (apply #'spacing-join-fn (mapcar #'resolve-string args))
-              "'"))
-
-(command-desc-fn 'focus 'left 'up 'down (concat-str "a" "b") (intern "ABC"))
-(command-desc-fn 'split '-v)
-
 (defun start-state-desc (state)
   (command-desc bind -c state))
 
@@ -145,98 +128,45 @@
 
 (dst-state-desc 'snormal)
 
-(defun echo-command (msg)
-  (command-desc echo (concat-str "\"" msg "\"")))
+(defmacro keybind-desc (key start dst (&rest befores) (&rest afters))
+  `(drop (spacing-join
+           (start-state-desc ',start)
+           (resolve-string ',key)
+           "eval"
+           ,@(mapcar #`(command-desc ,(car a0) ,@(cdr a0)) befores)
+           (dst-state-desc ',dst)
+           ,@(mapcar #`(command-desc ,(car a0) ,@(cdr a0)) afters))))
 
-(echo-command "let me know")
-
-
-(defmacro keybinding% (key start dst (&rest befores) (&rest afters))
-  `(spacing-join
-     (start-state-desc ',start)
-     (resolve-string ',key)
-     "eval"
-     ,@(mapcar #`(command-desc ,(car a0) ,@(cdr a0)) befores)
-     (dst-state-desc ',dst)
-     ,@(mapcar #`(command-desc ,(car a0) ,@(cdr a0)) afters)))
-
-(macroexpand-1 '(keybinding% j snormal snormal ((focus down))
+(macroexpand-1 '(keybind-desc j snormal snormal ((focus down))
                              ((echo "\"snormal (focus down)\""))))
-(format t "~a" (keybinding% j snormal snormal ((focus down)) ((echo "\"snormal (focus down)\""))))
-(format t "~a" (keybinding% "J" snormal snormal ((focus down)) ((echo "\"snormal (focus down)\""))))
+(format t "~a" (keybind-desc j snormal snormal ((focus down)) ((echo "\"snormal (focus down)\""))))
+(format t "~a" (keybind-desc "J" snormal snormal ((focus down)) ((echo "\"snormal (focus down)\""))))
 
-(defmacro defkeybind (key start dst (&rest command) &optional message)
-  `(keybinding% ,key ,start ,dst
-                (,@(if (atom (car command))
-                    `(,command)
-                    command))
+(defmacro keybind-common (key start dst (&rest commands) &optional message)
+  `(keybind-desc ,key ,start ,dst ,commands
                 (,(if (null message)
-                    `(echo-command
-                       (concat-str "[" (resolve-string ',dst) "] ("
-                                  (reduce (papply (concat-str
-                                                    _  " " (resolve-string _)))
-                                          (if (atom (car ',command))
-                                            ',command (car ',command))
-                                          :initial-value "")
-                                  ")"))
-                    `(echo-command ,message)))))
+                    `(echo
+                       (concat-str "\"[" (resolve-string ',dst) "] ("
+                                   (format nil "~{~a~^ ~}" (mapcar #'resolve-string
+                                                                   (car ',commands)))
+                                   ")\""))
+                    `(echo (concat-str "\"" ,message"\""))))))
 
-(format t "~a" (defkeybind j snormal snormal (focus down) "snormal (focus down)"))
-(format t "~a" (defkeybind j snormal snormal (focus down)))
+(format t "~a" (keybind-common j snormal snormal ((focus down)) "snormal (focus down)"))
+(format t "~a" (keybind-common j snormal snormal ((focus down))))
 
-(defmacro keybindings (strm start dst &body key-command-msg-lst)
-  (with-gensyms (key-com-msg key cmd msg)
-    `(dolist (,key-com-msg ',key-command-msg-lst)
-       (format ,strm "~%~a"
-               (destructuring-bind (,key ,cmd &optional ,msg)
-                 ,key-com-msg
-                 (commonplace-keybind-desc ,key ',start ',dst (if (atom (car ,cmd))
-                                                                 (list ,cmd),cmd)
-                                           ,msg))))))
+(defmacro multiple-keybinds (strm start dst &body key-command-msg-lst)
+  (let ((forms
+          (mapcar (lambda (key-com-msg)
+                    (destructuring-bind (key cmd &optional msg)
+                      key-com-msg
+                      `(format ,strm "~a~%" (keybind-common ,key ,start ,dst ,cmd ,msg))))
+                  key-command-msg-lst)))
+    `(progn
+       ,@forms)))
 
-;(defmacro keybinding% (key start dst (&rest befores) (&rest afters))
-;  `(spacing-join
-;     (start-state-desc ',start)
-;     (resolve-string ',key)
-;     "eval"
-;     ,@(mapcar #`(command-desc ,(car a0) ,@(cdr a0)) befores)
-;     (dst-state-desc ',dst)
-;     ,@(mapcar #`(command-desc ,(car a0) ,@(cdr a0)) afters)))
-;
-;(macroexpand-1 '(keybinding% j snormal snormal ((focus down))
-;                             ((echo "\"snormal (focus down)\""))))
-;(format t "~a" (keybinding% j snormal snormal ((focus down)) ((echo "\"snormal (focus down)\""))))
-;(format t "~a" (keybinding% "J" snormal snormal ((focus down)) ((echo "\"snormal (focus down)\""))))
-;
-;(defmacro defkeybind (key start dst (&rest command) &optional message)
-;  `(keybinding% ,key ,start ,dst
-;                (,@(if (atom (car command))
-;                    `(,command)
-;                    command))
-;                (,(if (null message)
-;                    (echo-command
-;                      (concat-str "[" (resolve-string dst) "] ("
-;                                  (reduce (papply (concat-str
-;                                                    (resolve-string _) " " (resolve-string _)))
-;                                          (if (atom (car command))
-;                                            command (car command))
-;                                          :initial-value "")
-;                                  ")"))
-;                    (echo-command message)))))
-;
-;(format t "~a" (defkeybind j snormal snormal (focus down) "snormal (focus down)"))
-;(format t "~a" (defkeybind j snormal snormal (focus down)))
-;
-;(defmacro keybindings (strm start dst &body key-command-msg-lst)
-;  (with-gensyms (key-com-msg key cmd msg)
-;    `(dolist (,key-com-msg ',key-command-msg-lst)
-;       (format ,strm "~%~a"
-;               (destructuring-bind (,key ,cmd &optional ,msg)
-;                 ,key-com-msg
-;                 (defkeybind ,key ,start ,dst ,cmd  ,msg))))))
-
-(keybindings t snormal snormal
-  (j (focus down))
-  (k (focus up))
-  (d (remove))
+(multiple-keybinds t snormal snormal
+  (j ((focus down)))
+  (k ((focus up)))
+  (d ((remove)))
   (s ((split -v) (focus right) (other) (focus left))))
