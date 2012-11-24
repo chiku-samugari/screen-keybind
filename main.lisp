@@ -150,30 +150,39 @@
 
 (echo-command "let me know")
 
-(defun keybind-desc (key start dst before-lst after-lst)
-  (spacing-join-fn
-    (start-state-desc start)
-    (resolve-string key)
-    "eval"
-    (apply #'spacing-join-fn (mapcar (lambda (x) (apply #'command-desc-fn x)) before-lst))
-    (dst-state-desc dst)
-    (apply #'spacing-join-fn (mapcar (lambda (x) (apply #'command-desc-fn x)) after-lst))))
 
-(keybind-desc "s" 'snormal 'snormal '((split -v) (focus right) (other) (focus left))
-              '((echo "\"[snormal] (split -v)\"")))
+(defmacro keybinding% (key start dst (&rest befores) (&rest afters))
+  `(spacing-join
+     (start-state-desc ',start)
+     (resolve-string ',key)
+     "eval"
+     ,@(mapcar #`(command-desc ,(car a0) ,@(cdr a0)) befores)
+     (dst-state-desc ',dst)
+     ,@(mapcar #`(command-desc ,(car a0) ,@(cdr a0)) afters)))
 
-(defun commonplace-keybind-desc (key start dst command-lst &optional message)
-  (keybind-desc key start dst command-lst
-                (list
-                  (if message
-                    (list 'echo message)
-                    (list 'echo
-                          (concat-str "\"[" (resolve-string dst) "] ("
-                                      (apply #'spacing-join-fn (mapcar #'resolve-string (car command-lst)))
-                                      ")\""))))))
+(macroexpand-1 '(keybinding% j snormal snormal ((focus down))
+                             ((echo "\"snormal (focus down)\""))))
+(format t "~a" (keybinding% j snormal snormal ((focus down)) ((echo "\"snormal (focus down)\""))))
+(format t "~a" (keybinding% "J" snormal snormal ((focus down)) ((echo "\"snormal (focus down)\""))))
 
-(commonplace-keybind-desc "k" 'snormal 'sinsert '((split -v) (focus right) (other) (focus left)))
-(commonplace-keybind-desc "s" 'snormal 'sinsert '((split -v) (focus right) (other) (focus left)))
+(defmacro defkeybind (key start dst (&rest command) &optional message)
+  `(keybinding% ,key ,start ,dst
+                (,@(if (atom (car command))
+                    `(,command)
+                    command))
+                (,(if (null message)
+                    `(echo-command
+                       (concat-str "[" (resolve-string ',dst) "] ("
+                                  (reduce (papply (concat-str
+                                                    _  " " (resolve-string _)))
+                                          (if (atom (car ',command))
+                                            ',command (car ',command))
+                                          :initial-value "")
+                                  ")"))
+                    `(echo-command ,message)))))
+
+(format t "~a" (defkeybind j snormal snormal (focus down) "snormal (focus down)"))
+(format t "~a" (defkeybind j snormal snormal (focus down)))
 
 (defmacro keybindings (strm start dst &body key-command-msg-lst)
   (with-gensyms (key-com-msg key cmd msg)
