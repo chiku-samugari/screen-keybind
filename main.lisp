@@ -17,26 +17,26 @@
 
 ;;; This time, I try reader macro. Let me decide the format of settings first.
 ;;; { and } are preserved for us!
-{snormal snormal
-  [l "'focus right'" ! "'echo \"[SNORMAL] (focus right)\"'"]
-  [h "'focus '"  ! "'echo \"[SNORMAL] (focus right)\"'"]
-}
-
-{src-state dst-state
-  [input-key list-of-outputs-before-transition ! list-of-outputs-after-transition]
-}
-
-(defun |#{-reader| (strm c arg)
-  (declare (ignore c arg))
-  (mapcon (lambda (x)
-            (mapcar (lambda (y) (list (car x) y)) (cdr x)))
-          (read-delimited-list #\} strm t)))
-
-(set-dispatch-macro-character #\# #\{ #'|#{-reader|)
-
-(set-macro-character #\} (get-macro-character #\) nil))
-
-(quote #{p q r s})
+;{snormal snormal
+;  [l "'focus right'" ! "'echo \"[SNORMAL] (focus right)\"'"]
+;  [h "'focus '"  ! "'echo \"[SNORMAL] (focus right)\"'"]
+;}
+;
+;{src-state dst-state
+;  [input-key list-of-outputs-before-transition ! list-of-outputs-after-transition]
+;}
+;
+;(defun |#{-reader| (strm c arg)
+;  (declare (ignore c arg))
+;  (mapcon (lambda (x)
+;            (mapcar (lambda (y) (list (car x) y)) (cdr x)))
+;          (read-delimited-list #\} strm t)))
+;
+;(set-dispatch-macro-character #\# #\{ #'|#{-reader|)
+;
+;(set-macro-character #\} (get-macro-character #\) nil))
+;
+;(quote #{p q #{r s t} u})
 
 ;;; Nov. 18th 2012, chiku
 ;;; No, I first have to write a program. Reader macro will behave as a coverter
