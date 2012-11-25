@@ -161,12 +161,24 @@
 (format t "~a" (keybind-common j snormal snormal ((focus down)) "snormal (focus down)"))
 (format t "~a" (keybind-common j snormal snormal ((focus down))))
 
+;;; Nov. 25th 2012, chiku
+;;; The latest version was not good to use. This is the outermost interface
+;;; and thus we are pretty sure that immidiate descriptions are written.
+(defun normalize-cmd-format (cmd)
+  (cond ((null cmd) '())
+        ((symbolp cmd) `((,cmd)))
+        ((symbolp (car cmd)) `(,cmd))
+        (t cmd)))
+
 (defmacro multiple-keybinds (strm start dst &body key-command-msg-lst)
   (let ((forms
           (mapcar (lambda (key-com-msg)
                     (destructuring-bind (key cmd &optional msg)
                       key-com-msg
-                      `(format ,strm "~a~%" (keybind-common ,key ,start ,dst ,cmd ,msg))))
+                      `(format ,strm "~a~%"
+                               (keybind-common ,key ,start ,dst
+                                               ,(normalize-cmd-format cmd)
+                                               ,msg))))
                   key-command-msg-lst)))
     `(progn
        ,@forms)))
@@ -176,3 +188,18 @@
   (k ((focus up)))
   (d ((remove)))
   (s ((split -v) (focus right) (other) (focus left))))
+
+(multiple-keybinds t snormal snormal
+  (c screen)
+  ("C-n" next)
+  ("C-p" prev)
+  (":" colon)
+  (j (focus down))
+  (k (focus up)))
+
+(multiple-keybinds t non-screen snormal
+  ("C-z" () "[snormal]"))
+
+(multiple-keybinds t snormal non-screen
+  (c ((screen)))
+  ("C-n" ((next))))
