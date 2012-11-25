@@ -73,6 +73,8 @@
 ;;; accept the uncomfortable situation, +1 becomes 1 when it is read. I mean, the use of
 ;;; READTABLE-CASE slot only solves a portion of the problem. But this function can solve
 ;;; the situtation.
+(in-package :chiku.genscreenrc)
+
 (defun resolve-string (string-designator)
   (cond ((symbolp string-designator) (string-downcase string-designator))
         ((characterp string-designator) (string string-designator))

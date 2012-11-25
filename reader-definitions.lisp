@@ -15,6 +15,7 @@
 ;
 ;[s split -v ! focus right ! other ! focus left]
 ;(s ((split -v) (focus right) (other) (focus left)))
+(in-package :chiku.genscreenrc)
 
 (defun |[-reader| (strm c)
   (declare (ignore c))
@@ -36,7 +37,6 @@
     (read-delimited-list #\} strm t)
     `(multiple-keybinds t ,start ,dst
        ,@key-cmdseqs)))
-    
 
 (set-macro-character #\{ #'|{-reader| nil)
 
