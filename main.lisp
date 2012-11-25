@@ -81,8 +81,6 @@
         ((stringp string-designator) string-designator)
         (t (error "Malformed string-designator: ~s" string-designator))))
 
-(resolve-string 'resize)
-
 (defmacro spacing-join (&rest args)
   `(concat-str ,@(mapcan (lambda (x) `(" " ,x)) args)))
 
@@ -116,25 +114,15 @@
                    ,@(mapcar #`(resolve-string ,a0) args))
                  "'")))
 
-(command-desc focus 'left up down (concat-str "a" "b") (intern "ABC"))
-(command-desc 'focus 'left up down (concat-str "a" "b") (intern "ABC"))
-(command-desc resize -l -v "+1")
-
 (defun start-state-desc (state)
   (if (eq state 'non-screen)
     "bindkey"
     (concat-str "bind -c " (resolve-string state))))
 
-(start-state-desc 'snormal)
-(start-state-desc 'non-screen)
-
 (defun dst-state-desc (state)
   (if (eq state 'non-screen)
     ""
     (command-desc command -c state)))
-
-(dst-state-desc 'snormal)
-(dst-state-desc 'non-screen)
 
 (defmacro keybind-desc (key start dst (&rest befores) (&rest afters))
   `(drop (spacing-join
@@ -145,11 +133,6 @@
            (dst-state-desc ',dst)
            ,@(mapcar #`(command-desc ,(car a0) ,@(cdr a0)) afters))))
 
-(macroexpand-1 '(keybind-desc j snormal snormal ((focus down))
-                             ((echo "\"snormal (focus down)\""))))
-(format t "~a" (keybind-desc j snormal snormal ((focus down)) ((echo "\"snormal (focus down)\""))))
-(format t "~a" (keybind-desc "J" snormal snormal ((focus down)) ((echo "\"snormal (focus down)\""))))
-
 (defmacro keybind-common (key start dst (&rest commands) &optional message)
   `(keybind-desc ,key ,start ,dst ,commands
                 (,(if (null message)
@@ -159,9 +142,6 @@
                                                                    (car ',commands)))
                                    ")\""))
                     `(echo (concat-str "\"" ,message"\""))))))
-
-(format t "~a" (keybind-common j snormal snormal ((focus down)) "snormal (focus down)"))
-(format t "~a" (keybind-common j snormal snormal ((focus down))))
 
 ;;; Nov. 25th 2012, chiku
 ;;; The latest version was not good to use. This is the outermost interface
@@ -184,24 +164,3 @@
                   key-command-msg-lst)))
     `(progn
        ,@forms)))
-
-(multiple-keybinds t snormal snormal
-  (j ((focus down)))
-  (k ((focus up)))
-  (d ((remove)))
-  (s ((split -v) (focus right) (other) (focus left))))
-
-(multiple-keybinds t snormal snormal
-  (c screen)
-  ("C-n" next)
-  ("C-p" prev)
-  (":" colon)
-  (j (focus down))
-  (k (focus up)))
-
-(multiple-keybinds t non-screen snormal
-  ("C-z" () "[snormal]"))
-
-(multiple-keybinds t snormal non-screen
-  (c ((screen)))
-  ("C-n" ((next))))
