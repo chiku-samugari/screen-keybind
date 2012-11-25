@@ -21,7 +21,7 @@
   (destructuring-bind (key &rest cmdseq)
     (read-delimited-list #\] strm t)
     (list key (multiple-value-bind (result top)
-                (group-headed '! cmdseq :mark-discard? t)
+                (group-headed "!" cmdseq :mark-discard? t :key #'symbol-name :test #'string=)
                 (cons top result)))))
 
 (set-macro-character #\[ #'|[-reader| nil)
