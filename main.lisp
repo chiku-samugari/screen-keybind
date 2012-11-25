@@ -119,14 +119,20 @@
 (command-desc resize -l -v "+1")
 
 (defun start-state-desc (state)
-  (command-desc bind -c state))
+  (if (eq state 'non-screen)
+    "bindkey"
+    (concat-str "bind -c " (resolve-string state))))
 
 (start-state-desc 'snormal)
+(start-state-desc 'non-screen)
 
 (defun dst-state-desc (state)
-  (command-desc command -c state))
+  (if (eq state 'non-screen)
+    ""
+    (command-desc command -c state)))
 
 (dst-state-desc 'snormal)
+(dst-state-desc 'non-screen)
 
 (defmacro keybind-desc (key start dst (&rest befores) (&rest afters))
   `(drop (spacing-join
