@@ -29,6 +29,7 @@
 
 (set-macro-character #\] (get-macro-character #\)))
 
+(quote [j focus down])
 (quote [s split -v ! focus right ! other ! focus left])
 
 (defun |{-reader| (strm c)
