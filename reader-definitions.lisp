@@ -1,20 +1,20 @@
 ;;;; Readers for reading more easier formats.
 ;;; Nov. 25th 2012, chiku
 ;;; This is the last step.
-{snormal snormal
-  [l focus right]
-  [s split -v ! focus right ! other ! focus left]
-}
-
-(multiple-keybinds t snromal snormal
-  (l ((focus right)))
-  (s ((split -v) (focus right) (other) (focus left))))
-
-[l focus right]
-(l ((focus right)))
-
-[s split -v ! focus right ! other ! focus left]
-(s ((split -v) (focus right) (other) (focus left)))
+;{snormal snormal
+;  [l focus right]
+;  [s split -v ! focus right ! other ! focus left]
+;}
+;
+;(multiple-keybinds t snromal snormal
+;  (l ((focus right)))
+;  (s ((split -v) (focus right) (other) (focus left))))
+;
+;[l focus right]
+;(l ((focus right)))
+;
+;[s split -v ! focus right ! other ! focus left]
+;(s ((split -v) (focus right) (other) (focus left)))
 
 (defun |[-reader| (strm c)
   (declare (ignore c))
@@ -47,12 +47,12 @@
          [s split -v ! focus right ! other ! focus left]
        })
 
-(with-open-file (*standard-output* ".screenrc" :direction :output :if-exists :supersede)
-{snormal snormal
-  [j focus down]
-  [k focus up]
-  [l focus right]
-  [h focus left]
-  ["C-i" focus next]
-  [s split ! focus down ! other ! focus up]
-  [v split -v ! focus right ! other ! focus left]})
+;(with-open-file (*standard-output* ".screenrc" :direction :output :if-exists :supersede)
+;{snormal snormal
+;  [j focus down]
+;  [k focus up]
+;  [l focus right]
+;  [h focus left]
+;  ["C-i" focus next]
+;  [s split ! focus down ! other ! focus up]
+;  [v split -v ! focus right ! other ! focus left]})

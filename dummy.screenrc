@@ -1,0 +1,7 @@
+bind -c snormal j eval 'focus down' 'command -c snormal' 'echo "[snormal] (focus down)"'
+bind -c snormal k eval 'focus up' 'command -c snormal' 'echo "[snormal] (focus up)"'
+bind -c snormal l eval 'focus right' 'command -c snormal' 'echo "[snormal] (focus right)"'
+bind -c snormal h eval 'focus left' 'command -c snormal' 'echo "[snormal] (focus left)"'
+bind -c snormal C-i eval 'focus next' 'command -c snormal' 'echo "[snormal] (focus next)"'
+bind -c snormal s eval 'split' 'focus down' 'other' 'focus up' 'command -c snormal' 'echo "[snormal] (split)"'
+bind -c snormal v eval 'split -v' 'focus right' 'other' 'focus left' 'command -c snormal' 'echo "[snormal] (split -v)"'

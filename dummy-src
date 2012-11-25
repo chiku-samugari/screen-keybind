@@ -1,0 +1,8 @@
+{snormal snormal
+  [j focus down]
+  [k focus up]
+  [l focus right]
+  [h focus left]
+  ["C-i" focus next]
+  [s split ! focus down ! other ! focus up]
+  [v split -v ! focus right ! other ! focus left]}
