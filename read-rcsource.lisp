@@ -3,6 +3,8 @@
 ;;; screenrc from it.
 (in-package :chiku.genscreenrc)
 
-(defun read-rcsrc (src-filename &optional (output-filename ".screenrc"))
-  (with-open-file (*standard-output* output-filename :direction :output :if-exists :supersede)
-    (load src-filename)))
+(defun read-rcsrc (src-filename &optional (output t))
+  (if (eq output t)
+    (load src-filename)
+    (with-open-file (*standard-output* output :direction :output :if-exists :supersede)
+      (load src-filename))))
