@@ -21,8 +21,7 @@
   (declare (ignore c))
   (destructuring-bind (start dst &rest key-cmdseqs)
     (read-delimited-list #\} strm t)
-    `(multiple-keybinds t ,start ,dst
-       ,@key-cmdseqs)))
+    `(multiple-keybinds t ,start ,dst ,@key-cmdseqs)))
 
 (set-macro-character #\{ #'|{-reader| nil)
 
