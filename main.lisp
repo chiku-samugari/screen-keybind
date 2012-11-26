@@ -75,11 +75,12 @@
 ;;; the situtation.
 (in-package :chiku.genscreenrc)
 
-(defun resolve-string (string-designator)
-  (cond ((symbolp string-designator) (string-downcase string-designator))
-        ((characterp string-designator) (string string-designator))
-        ((stringp string-designator) string-designator)
-        (t (error "Malformed string-designator: ~s" string-designator))))
+(defun resolve-string (strsrc)
+  (cond ((numberp strsrc) (itoa strsrc))
+        ((symbolp strsrc) (string-downcase strsrc))
+        ((characterp strsrc) (string strsrc))
+        ((stringp strsrc) strsrc)
+        (t (error "Malformed string source: ~s" strsrc))))
 
 (defmacro spacing-join (&rest args)
   `(concat-str ,@(mapcan (lambda (x) `(" " ,x)) args)))
