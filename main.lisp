@@ -1,48 +1,38 @@
 ;;;; Screenrc Generator
-;;; Nov. 17th 2012, chiku
-;;; I decided to implement a mode like vim's normal mode on screen. It requires
-;;; me to write too much same codes and thus I decided to write a converter.
-;;; There are 3 categories of commands in snormal mode.
+;;; Nov. 27th 2012, chiku
+;;; I start the second implementation that can treat all state transition. Let me
+;;; call the initial state ``raw,'' the state after screen-escape key ``screen''
+;;; and all other states ``X.'' Then, following 9 patterns are possible:
 ;;;
-;;;     +. RETAIN : retains in the same mode after the execution of the command.
-;;;     +. LEAVE : leave for the state before any key is input to screen.
-;;;     +. TRANSIT : move to a different mode after the execution of the command.
+;;;     1. raw -> screen
+;;;     2. screen -> X
+;;;     3. X -> raw
+;;;     4. raw -> X
+;;;     5. X -> screen
+;;;     6. screen -> raw
+;;;     7. raw -> raw
+;;;     8. screen -> screen
+;;;     9. X -> X
 ;;;
-;;; In principal, all these 3 category can be seen as just a variation of TRANSIT
-;;; because a RETAIN command move to the same command after the execution and a
-;;; LEAVE command move to a non-screen mode, if we call that state as non-screen
-;;; mode.
+;;; Please be aware that ``->'' intends not only a state transition but also
+;;; a sequence of commands could be executed along to that state transition.
+;;; The required command sequence is different from 1. to 9. as follows:
 ;;;
-;;; In order to move from non-screen mode to another mode, we have to use ``bindkey''
-
-;;; This time, I try reader macro. Let me decide the format of settings first.
-;;; { and } are preserved for us!
-;{snormal snormal
-;  [l "'focus right'" ! "'echo \"[SNORMAL] (focus right)\"'"]
-;  [h "'focus '"  ! "'echo \"[SNORMAL] (focus right)\"'"]
-;}
-;
-;{src-state dst-state
-;  [input-key list-of-outputs-before-transition ! list-of-outputs-after-transition]
-;}
-;
-;(defun |#{-reader| (strm c arg)
-;  (declare (ignore c arg))
-;  (mapcon (lambda (x)
-;            (mapcar (lambda (y) (list (car x) y)) (cdr x)))
-;          (read-delimited-list #\} strm t)))
-;
-;(set-dispatch-macro-character #\# #\{ #'|#{-reader|)
-;
-;(set-macro-character #\} (get-macro-character #\) nil))
-;
-;(quote #{p q #{r s t} u})
-
-;;; Nov. 18th 2012, chiku
-;;; No, I first have to write a program. Reader macro will behave as a coverter
-;;; that converts the input file (manually written) into the form that the program
-;;; can handle.
-
+;;;     1. escape ^z
+;;;         OR bindkey ^z eval 'command'
+;;;         OR bindkey ^z eval 'focus up' 'command' 'echo "enter [screen]"'
+;;;     2. bind r eval 'command -c X' 'echo "enter [X]"'
+;;;     3. bind -c X s 'split' 'focus down' 'other' 'focus up' 'echo "leave [X]"'
+;;;     4. bindkey ^w eval 'other' 'command -c X' 'echo "enter [X]"'
+;;;     5. bind -c X k eval 'focus up' 'command' 'echo "enter [screen]"'
+;;;     6. bind w windowlist -b
+;;;     7. bindkey ^a eval 'focus up'
+;;;     8. bind + eval 'resize +1' 'command'
+;;;     9. bind -c X j eval 'focus down' 'command -c X'
+;;;
+;;; As you can see, we have to properly use 3 diffierent commands ``bind,''
+;;; ``bind -c'' and ``bindkey.''
+;;;
 ;;; Nov. 22nd 2012, chiku
 ;;; Dirty function. I want to use symbols to provide pieces of screenrc settings.
 ;;; Some macros will be proveided as outermost interfaces.
