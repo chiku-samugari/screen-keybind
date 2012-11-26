@@ -9,7 +9,9 @@
     (read-delimited-list #\] strm t)
     (list key (multiple-value-bind (result top)
                 (group-headed '! cmdseq :mark-discard? t)
-                (cons top result)))))
+                (if top
+                  (cons top result)
+                  result)))))
 
 (set-macro-character #\[ #'|[-reader| nil)
 
