@@ -8,7 +8,7 @@
   (destructuring-bind (key &rest cmdseq)
     (read-delimited-list #\] strm t)
     (list key (multiple-value-bind (result top)
-                (group-headed "!" cmdseq :mark-discard? t :key #'symbol-name :test #'string=)
+                (group-headed '! cmdseq :mark-discard? t)
                 (cons top result)))))
 
 (set-macro-character #\[ #'|[-reader| nil)
