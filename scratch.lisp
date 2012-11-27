@@ -48,3 +48,8 @@
   (list 1 2 3)
   (print a)
   (print b))
+
+(quote [^i other])
+(quote {snormal snormal [^i other]})
+
+(chiku.genscreenrc:read-rcsrc "screenrc-src" "/home/chiku/.screen/keybind.screenrc")

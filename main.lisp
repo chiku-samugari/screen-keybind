@@ -1,4 +1,4 @@
-;;;; Screenrc Generator
+;;;; Screen Keybind
 ;;; Nov. 27th 2012, chiku
 ;;; I start the second implementation that can treat all state transition. Let me
 ;;; call the initial state ``raw,'' the state after screen-escape key ``screen''
@@ -22,7 +22,7 @@
 ;;;         OR bindkey ^z eval 'command'
 ;;;         OR bindkey ^z eval 'focus up' 'command' 'echo "enter [screen]"'
 ;;;     2. bind r eval 'command -c X' 'echo "enter [X]"'
-;;;     3. bind -c X s 'split' 'focus down' 'other' 'focus up' 'echo "leave [X]"'
+;;;     3. bind -c X s eval 'split' 'focus down' 'other' 'focus up' 'echo "leave [X]"'
 ;;;     4. bindkey ^w eval 'other' 'command -c X' 'echo "enter [X]"'
 ;;;     5. bind -c X k eval 'focus up' 'command' 'echo "enter [screen]"'
 ;;;     6. bind w windowlist -b
@@ -72,71 +72,173 @@
         ((stringp strsrc) strsrc)
         (t (error "Malformed string source: ~s" strsrc))))
 
-(defmacro spacing-join (&rest args)
-  `(concat-str ,@(mapcan (lambda (x) `(" " ,x)) args)))
+(defun seval-arg (str)
+  " An argument for eval command of screen must be wrapped
+    with quote."
+  (concat-str "'" str "'"))
 
-(defun |#`-reader| (strm c n)
-  (declare (ignore c))
-    `(lambda ,(map0-n (lambda (n) (intern (format nil "A~a" n))) (1- (or n 1)))
-       ,(read (make-concatenated-stream (make-string-input-stream "`") strm)
-              t nil t)))
+(defun secho-arg (str)
+  " An argument for echo command of screeen must be wrapped
+    with double quote."
+  (concat-str "\"" str "\""))
 
-(set-dispatch-macro-character #\# #\` #'|#`-reader|)
+(defun state-leave-desc (state)
+  (case state
+    (raw "bindkey")
+    (screen "bind")
+    (t (concat-str "bind -c " (resolve-string state)))))
 
-;;; I decided to implement this operator as a macro because it is one of the
-;;; interface I use for the implementation of next layer, START-STATE-DESC and so on.
-;;; SYMBOL-MACROLET!
-;;;  Nov. 23rd 2012, chiku
-;;;     (lambda (state)
-;;;       (command-desc bind -c state))
-;;; The above form is correctly handled. STATE is not quoted during the expansion of
-;;; COMMAND-DESC macro. This is really good to write code pieces that use this macro,
-;;; but when it comes to read, I guess it is not comfortable.
-(defmacro command-desc (command &rest args &environment env)
-  `(symbol-macrolet ,(mapcar #`(,a0 ',a0)
-                         (remove-if-not
-                           (lambda (sym)
-                             (and (symbolp sym)
-                                  (not (eq (sb-cltl2:variable-information sym env) :lexical))))
-                           (cons command args)))
-     (concat-str "'"
-                 (resolve-string ,command)
-                 (spacing-join
-                   ,@(mapcar #`(resolve-string ,a0) args))
-                 "'")))
+(defun state-arrive-desc (state)
+  (case state
+    (raw "")
+    (screen (seval-arg "command"))
+    (t (seval-arg (concat-str "command -c " (resolve-string state))))))
 
-(defun start-state-desc (state)
-  (if (eq state 'non-screen)
-    "bindkey"
-    (concat-str "bind -c " (resolve-string state))))
+(defun spacing-join (&rest strs)
+  (format nil "~{~a~^ ~}" strs))
 
-(defun dst-state-desc (state)
-  (if (eq state 'non-screen)
-    ""
-    (command-desc command -c state)))
+;;; desc : string
+;;; state : string-designator
+;;; key : string-designator or an integer number
 
-(defmacro keybind-desc (key start dst (&rest befores) (&rest afters))
-  `(drop (spacing-join
-           (start-state-desc ',start)
-           (resolve-string ',key)
-           "eval"
-           ,@(mapcar #`(command-desc ,(car a0) ,@(cdr a0)) befores)
-           (dst-state-desc ',dst)
-           ,@(mapcar #`(command-desc ,(car a0) ,@(cdr a0)) afters))))
+;(defun keybind-desc (key start-state goal-state prior-comdescs post-comdescs)
+;  (string-trim " "
+;               (spacing-join (state-leave-desc start-state)
+;                             (resolve-string key)
+;                             "eval"
+;                             (apply #'spacing-join (mapcar #'seval-arg prior-comdescs))
+;                             (state-arrive-desc goal-state)
+;                             (apply #'spacing-join (mapcar #'seval-arg post-comdescs)))))
+
+(defun keybind-desc (key start-state goal-state prior-comdescs post-comdescs)
+  (string-trim " "
+               (spacing-join (state-leave-desc start-state)
+                             (resolve-string key)
+                             "eval"
+                             (if (or (null prior-comdescs)
+                                     (and (null (cdr prior-comdescs))
+                                          (zerop (length (car prior-comdescs)))))
+                               ""
+                               (apply #'spacing-join (mapcar #'seval-arg prior-comdescs)))
+                             (state-arrive-desc goal-state)
+                             (if (or (null post-comdescs)
+                                     (and (null (cdr post-comdescs))
+                                          (zerop (length (car post-comdescs)))))
+                               ""
+                               (apply #'spacing-join (mapcar #'seval-arg post-comdescs))))))
+
+(keybind-desc "^v" 'screen "X"
+              (list "split -v" "focus right" "other" "focus left")
+              (list "echo \"enter [X]\""))
+
+(keybind-desc "v" "X" "X"
+              (list "split -v" "focus right" "other" "focus left")
+              (list "echo \"enter [X]\""))
+
+(keybind-desc '^s "X" "X"
+              (list "split" "focus down" "other" "focus up")
+              (list "echo \"enter [X]\""))
+
+(keybind-desc 'v "X" "X"
+              (list "split -v" "focus right" "other" "focus left")
+              ())
+
+(keybind-desc 'v "X" "X"
+              (list "split -v" "focus right" "other" "focus left")
+              (list ""))
+
+;;; Nov. 27th 2012, chiku
+;;; Dangerous function. When you useit, please consider carefully if
+;;; this judgement is really possible on macro expansion time.
+;;; Generally speaking, macros that works as outermost interfaces can
+;;; use to implemente with this function.
+(defun quote-if-symbol (x)
+  (if (symbolp x) `',x x))
+
+(defun take-lispcode (x)
+  (cadr x))
+
+(defun comitem-stringify-form (comitem)
+  (cond ((atom comitem) (resolve-string comitem))
+        ;; This is required for really minor case. If we want to use
+        ;; single lexical variable as acom item, then this is useful.
+        ;; (identity x) is alternative way in such case, though.
+        ((and (consp comitem) (eq (car comitem) :lisp))
+         (take-lispcode comitem))
+        (t comitem)))
+
+(comitem-stringify-form 'left)
+(comitem-stringify-form '(coerce (list #\l #\e #\f #\t) 'string))
+(comitem-stringify-form '(:lisp (concatenate 'string (list #\c #\l))))
+
+(defun com-stringify-form (com)
+  (if (eq (car com) :lisp)
+    (take-lispcode com)
+    `(spacing-join ,@(mapcar #'comitem-stringify-form com))))
+
+(com-stringify-form '(focus left))
+(com-stringify-form '(focus (coerce (list #\l #\e #\f #\t) 'string)))
+(com-stringify-form '(:lisp (concatenate 'string "focus " (concatenate 'string "ri" "ght"))))
+
+(defun comseq-construct-form (comseq)
+  (if (eq (car comseq) :lisp)
+    (take-lispcode comseq)
+    `(list ,@(mapcar #'com-stringify-form comseq))))
+
+(comseq-construct-form '((split -v) (focus right) (other) (focus left)))
+(comseq-construct-form '((split) (:lisp (string #\c))))
+(comseq-construct-form '(:lisp (list "split -v" (concat-str "fo" "cus" " right"
+                                                            (spacing-join " other" "focus" "left")))))
+
+(defmacro keybind (key start goal (&rest prior-coms) (&rest post-coms))
+  `(keybind-desc ,(quote-if-symbol key)
+                 ,(quote-if-symbol start)
+                 ,(quote-if-symbol goal)
+                 ,(comseq-construct-form prior-coms)
+                 ,(comseq-construct-form post-coms)))
+
+;;; COMSEQ-CONSTRUCT-FORM, COM-STRINGIFY-FORM and COMITEM-STRINGIFY-FORM return
+;;; a form that returns one string if evaluated. A function that returns a form
+;;; is of course quite natural when we are writing macros. What I want to
+;;; emphasize here is, do not use it in a function definition. It works in
+;;; macro for constructing a code.
+
+(keybind ^c raw screen ((focus up)) ())
+(keybind ^p window-select window-select
+         ((prev))
+         ((echo (secho-arg "[window-select] (prev)"))))
+
+(let ((x "focus down")
+      (y "-v"))
+  (keybind j window-select window-select
+           ((:lisp x) (focus up) (split (:lisp y)))
+           ()))
+
+(defun default-message (dst comdesc)
+  (concat-str "[" (resolve-string dst) "] (" comdesc ")"))
 
 (defmacro keybind-common (key start dst (&rest commands) &optional message)
-  `(keybind-desc ,key ,start ,dst ,commands
-                (,(if (null message)
-                    `(echo
-                       (concat-str "\"[" (resolve-string ',dst) "] ("
-                                   (format nil "~{~a~^ ~}" (mapcar #'resolve-string
-                                                                   (car ',commands)))
-                                   ")\""))
-                    `(echo (concat-str "\"" ,message"\""))))))
+  " message : any form that is evaluated into a string.
+              A string literal is welcome, of course.
+  "
+  `(keybind ,key ,start ,dst
+            ,commands
+            (,(cond ((null message)
+                     `(echo (:lisp (secho-arg (default-message
+                                                ',dst
+                                                ,(com-stringify-form (car commands)))))))
+                    ((zerop (length message)) ())
+                    (t `(echo (:lisp (secho-arg ,message))))))))
 
-;;; Nov. 25th 2012, chiku
-;;; The latest version was not good to use. This is the outermost interface
-;;; and thus we are pretty sure that immidiate descriptions are written.
+(keybind-common j snormal snormal ((focus down)))
+(keybind-common k screen raw ((focus up)) "focus up")
+(keybind-common v screen raw ((split -v) (focus right) (other) (focus left)) "vertical split")
+(keybind-common v snormal snormal ((split -v) (focus right) (other) (focus left)))
+(keybind-common s snormal snormal ((split) (focus right) (other) (focus left)))
+; a form generates the message
+(keybind-common l snormal snormal ((focus right)) (coerce (coerce "focus right" 'list) 'string))
+(keybind-common l snormal snormal ((focus right)) "")
+
 (defun normalize-cmd-format (cmd)
   (cond ((null cmd) '())
         ((symbolp cmd) `((,cmd)))
@@ -155,3 +257,16 @@
                   key-command-msg-lst)))
     `(progn
        ,@forms)))
+
+(multiple-keybinds t snormal snormal
+  (k (focus up))
+  (j (focus down))
+  (^i (focus next))
+  (s ((split) (focus down) (other) (focus up)))
+  (v ((split -v) (focus right) (other) (focus left)) "vertical split"))
+
+(multiple-keybinds t screen raw
+  (^n next)
+  (^p prev)
+  (0 (select 0))
+  (- (select -)))
