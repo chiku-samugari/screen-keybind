@@ -77,9 +77,8 @@
     with quote."
   (concat-str "'" str "'"))
 
-(defun secho-arg (str)
-  " An argument for echo command of screeen must be wrapped
-    with double quote."
+(defun sstringarg (str)
+  " A string arguments for screen command must be double quoted."
   (concat-str "\"" str "\""))
 
 (defun state-leave-desc (state)
@@ -206,7 +205,7 @@
 (keybind ^c raw screen ((focus up)) ())
 (keybind ^p window-select window-select
          ((prev))
-         ((echo (secho-arg "[window-select] (prev)"))))
+         ((echo (sstringarg "[window-select] (prev)"))))
 
 (let ((x "focus down")
       (y "-v"))
@@ -215,7 +214,11 @@
            ()))
 
 (defun default-message (dst comdesc)
-  (concat-str "[" (resolve-string dst) "] (" comdesc ")"))
+  (concat-str "%{= }%?%E[" (resolve-string dst) "]"
+              (if (not (zerop (length comdesc)))
+                (concat-str " (" comdesc ")")
+                "")
+              "%:[raw]%?%030=|%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w|%=%m/%d %02c"))
 
 (defmacro keybind-common (key start dst (&rest commands) &optional message)
   " message : any form that is evaluated into a string.
@@ -224,11 +227,12 @@
   `(keybind ,key ,start ,dst
             ,commands
             (,(cond ((null message)
-                     `(echo (:lisp (secho-arg (default-message
-                                                ',dst
-                                                ,(com-stringify-form (car commands)))))))
+                     `(hardstatus string
+                                  (:lisp (sstringarg (default-message
+                                                      ',dst
+                                                      ,(com-stringify-form (car commands)))))))
                     ((zerop (length message)) ())
-                    (t `(echo (:lisp (secho-arg ,message))))))))
+                    (t `(hardstatus string (:lisp (sstringarg ,message))))))))
 
 (keybind-common j snormal snormal ((focus down)))
 (keybind-common k screen raw ((focus up)) "focus up")
@@ -238,6 +242,7 @@
 ; a form generates the message
 (keybind-common l snormal snormal ((focus right)) (coerce (coerce "focus right" 'list) 'string))
 (keybind-common l snormal snormal ((focus right)) "")
+(keybind-common ^z raw screen ())
 
 (defun normalize-cmd-format (cmd)
   (cond ((null cmd) '())
