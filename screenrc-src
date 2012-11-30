@@ -1,4 +1,4 @@
-(princ "escape ^z^z")
+escape ^z^z
 
 hardstatus-string "%030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.} %{-}%=%m/%d %02c"
 

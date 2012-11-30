@@ -222,6 +222,8 @@
 (define-symbol-macro hardstatus-string
                      (set-hardstatus-string (read)))
 
+(define-symbol-macro escape (format t "~&escape ~a~%" (resolve-string (read))))
+
 (defun default-message (dst comdesc)
   (concat-str "%{= }%?%E[" (resolve-string dst) "]"
               (if (not (zerop (length comdesc)))
