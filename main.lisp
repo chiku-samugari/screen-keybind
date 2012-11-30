@@ -98,7 +98,8 @@
 
 ;;; desc : string
 ;;; state : string-designator
-;;; key : string-designator or an integer number
+;;; key : string or an integer number or a character. Symbol is NOT allowed.
+;;;       How to treat octal numbers?
 
 ;(defun keybind-desc (key start-state goal-state prior-comdescs post-comdescs)
 ;  (string-trim " "
@@ -126,6 +127,14 @@
                                ""
                                (apply #'spacing-join (mapcar #'seval-arg post-comdescs))))))
 
+(keybind-desc #\C 'screen "X"
+              (list "split -v" "focus right" "other" "focus left")
+              (list "echo \"enter [X]\""))
+
+(keybind-desc 'c 'screen "X"
+              (list "split -v" "focus right" "other" "focus left")
+              (list "echo \"enter [X]\""))
+
 (keybind-desc "^v" 'screen "X"
               (list "split -v" "focus right" "other" "focus left")
               (list "echo \"enter [X]\""))
@@ -134,25 +143,17 @@
               (list "split -v" "focus right" "other" "focus left")
               (list "echo \"enter [X]\""))
 
-(keybind-desc '^s "X" "X"
+(keybind-desc "^s" "X" "X"
               (list "split" "focus down" "other" "focus up")
               (list "echo \"enter [X]\""))
 
-(keybind-desc 'v "X" "X"
+(keybind-desc "v" "X" "X"
               (list "split -v" "focus right" "other" "focus left")
               ())
 
-(keybind-desc 'v "X" "X"
+(keybind-desc "v" "X" "X"
               (list "split -v" "focus right" "other" "focus left")
               (list ""))
-
-;;; Nov. 27th 2012, chiku
-;;; Dangerous function. When you useit, please consider carefully if
-;;; this judgement is really possible on macro expansion time.
-;;; Generally speaking, macros that works as outermost interfaces can
-;;; use to implemente with this function.
-(defun quote-if-symbol (x)
-  (if (symbolp x) `',x x))
 
 (defun take-lispcode (x)
   (cadr x))
@@ -190,10 +191,11 @@
                                                             (spacing-join " other" "focus" "left")))))
 
 (defmacro keybind (strm key start goal (&rest prior-coms) (&rest post-coms))
+  " key : a string or a character or an integer
+    start,goal : a symbol. not evaluated.
+  "
   `(format ,strm "~a~%"
-           (keybind-desc ,(quote-if-symbol key)
-                         ,(quote-if-symbol start)
-                         ,(quote-if-symbol goal)
+           (keybind-desc ,key ',start ',goal
                          ,(comseq-construct-form prior-coms)
                          ,(comseq-construct-form post-coms))))
 
@@ -203,14 +205,14 @@
 ;;; emphasize here is, do not use it in a function definition. It works in
 ;;; macro for constructing a code.
 
-(keybind t ^c raw screen ((focus up)) ())
-(keybind t ^p window-select window-select
+(keybind t "^c" raw screen ((focus up)) ())
+(keybind t "^p" window-select window-select
          ((prev))
          ((echo (sstringarg "[window-select] (prev)"))))
 
 (let ((x "focus down")
       (y "-v"))
-  (keybind nil j window-select window-select
+  (keybind nil "j" window-select window-select
            ((:lisp x) (focus up) (split (:lisp y)))
            ()))
 
@@ -234,7 +236,7 @@
 
 (defmacro keybind-common (strm key start dst (&rest commands) &optional message)
   " message : any form that is evaluated into a string.
-   A string literal is welcome, of course.
+              A string literal is welcome, of course.
    "
   `(keybind ,strm ,key ,start ,dst
             ,commands
@@ -246,15 +248,15 @@
                     ((zerop (length message)) ())
                     (t `(hardstatus string (:lisp (sstringarg ,message))))))))
 
-(keybind-common t j snormal snormal ((focus down)))
-(keybind-common t k screen raw ((focus up)) "focus up")
-(keybind-common t v screen raw ((split -v) (focus right) (other) (focus left)) "vertical split")
-(keybind-common t v snormal snormal ((split -v) (focus right) (other) (focus left)))
-(keybind-common t s snormal snormal ((split) (focus right) (other) (focus left)))
+(keybind-common t "j" snormal snormal ((focus down)))
+(keybind-common t "k" screen raw ((focus up)) "focus up")
+(keybind-common t "v" screen raw ((split -v) (focus right) (other) (focus left)) "vertical split")
+(keybind-common t "v" snormal snormal ((split -v) (focus right) (other) (focus left)))
+(keybind-common t "s" snormal snormal ((split) (focus right) (other) (focus left)))
 ; a form generates the message
-(keybind-common nil l snormal snormal ((focus right)) (coerce (coerce "focus right" 'list) 'string))
-(keybind-common nil l snormal snormal ((focus right)) "")
-(keybind-common nil ^z raw screen ())
+(keybind-common nil "l" snormal snormal ((focus right)) (coerce (coerce "focus right" 'list) 'string))
+(keybind-common nil "l" snormal snormal ((focus right)) "")
+(keybind-common nil "^z" raw screen ())
 
 (defun normalize-cmd-format (cmd)
   (cond ((null cmd) '())
@@ -275,14 +277,14 @@
        ,@forms)))
 
 (multiple-keybinds t snormal snormal
-  (k (focus up))
-  (j (focus down))
-  (^i (focus next))
-  (s ((split) (focus down) (other) (focus up)))
-  (v ((split -v) (focus right) (other) (focus left)) "vertical split"))
+  ("k" (focus up))
+  ("j" (focus down))
+  ("^i" (focus next))
+  ("s" ((split) (focus down) (other) (focus up)))
+  ("v" ((split -v) (focus right) (other) (focus left)) "vertical split"))
 
 (multiple-keybinds t screen raw
-  (^n next)
-  (^p prev)
+  ("^n" next)
+  ("^p" prev)
   (0 (select 0))
-  (- (select -)))
+  ("-" (select -)))
