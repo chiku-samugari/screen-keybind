@@ -213,12 +213,21 @@
            ((:lisp x) (focus up) (split (:lisp y)))
            ()))
 
+(defparameter *hardstatus-string* "")
+
+(defun set-hardstatus-string (str)
+  (progn (setf *hardstatus-string* str)
+         (format t "~&hardstatus string ~a~%" str)))
+
+(define-symbol-macro hardstatus-string
+                     (set-hardstatus-string (read)))
+
 (defun default-message (dst comdesc)
   (concat-str "%{= }%?%E[" (resolve-string dst) "]"
               (if (not (zerop (length comdesc)))
                 (concat-str " (" comdesc ")")
                 "")
-              "%:[raw]%?%030=|%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w|%=%m/%d %02c"))
+              "%:[raw]%?" *hardstatus-string*))
 
 (defmacro keybind-common (key start dst (&rest commands) &optional message)
   " message : any form that is evaluated into a string.

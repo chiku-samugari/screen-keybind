@@ -1,0 +1,75 @@
+(princ "escape ^z^z")
+
+hardstatus-string "%030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.} %{-}%=%m/%d %02c"
+
+{raw screen
+  [^z]
+}
+
+{screen snormal
+  [r]
+  [^r]
+}
+
+{screen raw
+  [w windowlist -b]
+  ["^]" paste]
+  [t title]
+}
+
+{snormal snormal
+  ; focus movement
+  [j focus down]
+  [k focus up]
+  [l focus right]
+  [h focus left]
+  [^i focus next]
+  [s split ! focus down ! other ! focus up]
+  [v split -v ! focus right ! other ! focus left]
+  [d remove]
+  [o only]
+  ; resize
+  [+ resize -l -v "+1"]
+  [- resize -l -v -1]
+  [= resize -l =]
+  [< resize -l -h -1]
+  [> resize -l -h "+1"]
+  ; window select
+  [^p prev]
+  [^n next]
+  ; others
+  [c screen]
+  [^l redisplay]
+  [t title]
+}
+
+{snormal raw
+  ; window selection
+  [0 select 0]
+  [1 select 1]
+  [2 select 2]
+  [3 select 3]
+  [4 select 4]
+  [5 select 5]
+  [6 select 6]
+  [7 select 7]
+  [8 select 8]
+  [9 select 9]
+  [- select -]
+  [w windowlist -b]
+  ; others
+  [":" colon]
+  ["^[" copy]
+}
+
+; layout
+{snormal snormal
+  ["L" layout new]
+  ["P" layout prev]
+  ["N" layout next]
+  ["D" layout remove]
+  ;[ layout title]
+  ;[ layout number]
+  ;[ layout show]
+  ;[ layout select]
+}
