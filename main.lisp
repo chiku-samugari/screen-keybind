@@ -189,12 +189,13 @@
 (comseq-construct-form '(:lisp (list "split -v" (concat-str "fo" "cus" " right"
                                                             (spacing-join " other" "focus" "left")))))
 
-(defmacro keybind (key start goal (&rest prior-coms) (&rest post-coms))
-  `(keybind-desc ,(quote-if-symbol key)
-                 ,(quote-if-symbol start)
-                 ,(quote-if-symbol goal)
-                 ,(comseq-construct-form prior-coms)
-                 ,(comseq-construct-form post-coms)))
+(defmacro keybind (strm key start goal (&rest prior-coms) (&rest post-coms))
+  `(format ,strm "~a~%"
+           (keybind-desc ,(quote-if-symbol key)
+                         ,(quote-if-symbol start)
+                         ,(quote-if-symbol goal)
+                         ,(comseq-construct-form prior-coms)
+                         ,(comseq-construct-form post-coms))))
 
 ;;; COMSEQ-CONSTRUCT-FORM, COM-STRINGIFY-FORM and COMITEM-STRINGIFY-FORM return
 ;;; a form that returns one string if evaluated. A function that returns a form
@@ -202,14 +203,14 @@
 ;;; emphasize here is, do not use it in a function definition. It works in
 ;;; macro for constructing a code.
 
-(keybind ^c raw screen ((focus up)) ())
-(keybind ^p window-select window-select
+(keybind t ^c raw screen ((focus up)) ())
+(keybind t ^p window-select window-select
          ((prev))
          ((echo (sstringarg "[window-select] (prev)"))))
 
 (let ((x "focus down")
       (y "-v"))
-  (keybind j window-select window-select
+  (keybind nil j window-select window-select
            ((:lisp x) (focus up) (split (:lisp y)))
            ()))
 
@@ -231,29 +232,29 @@
                 "")
               "%:[raw]%?" *hardstatus-string*))
 
-(defmacro keybind-common (key start dst (&rest commands) &optional message)
+(defmacro keybind-common (strm key start dst (&rest commands) &optional message)
   " message : any form that is evaluated into a string.
-              A string literal is welcome, of course.
-  "
-  `(keybind ,key ,start ,dst
+   A string literal is welcome, of course.
+   "
+  `(keybind ,strm ,key ,start ,dst
             ,commands
             (,(cond ((null message)
                      `(hardstatus string
                                   (:lisp (sstringarg (default-message
-                                                      ',dst
-                                                      ,(com-stringify-form (car commands)))))))
+                                                       ',dst
+                                                       ,(com-stringify-form (car commands)))))))
                     ((zerop (length message)) ())
                     (t `(hardstatus string (:lisp (sstringarg ,message))))))))
 
-(keybind-common j snormal snormal ((focus down)))
-(keybind-common k screen raw ((focus up)) "focus up")
-(keybind-common v screen raw ((split -v) (focus right) (other) (focus left)) "vertical split")
-(keybind-common v snormal snormal ((split -v) (focus right) (other) (focus left)))
-(keybind-common s snormal snormal ((split) (focus right) (other) (focus left)))
+(keybind-common t j snormal snormal ((focus down)))
+(keybind-common t k screen raw ((focus up)) "focus up")
+(keybind-common t v screen raw ((split -v) (focus right) (other) (focus left)) "vertical split")
+(keybind-common t v snormal snormal ((split -v) (focus right) (other) (focus left)))
+(keybind-common t s snormal snormal ((split) (focus right) (other) (focus left)))
 ; a form generates the message
-(keybind-common l snormal snormal ((focus right)) (coerce (coerce "focus right" 'list) 'string))
-(keybind-common l snormal snormal ((focus right)) "")
-(keybind-common ^z raw screen ())
+(keybind-common nil l snormal snormal ((focus right)) (coerce (coerce "focus right" 'list) 'string))
+(keybind-common nil l snormal snormal ((focus right)) "")
+(keybind-common nil ^z raw screen ())
 
 (defun normalize-cmd-format (cmd)
   (cond ((null cmd) '())
@@ -266,10 +267,9 @@
           (mapcar (lambda (key-com-msg)
                     (destructuring-bind (key cmd &optional msg)
                       key-com-msg
-                      `(format ,strm "~a~%"
-                               (keybind-common ,key ,start ,dst
-                                               ,(normalize-cmd-format cmd)
-                                               ,msg))))
+                      `(keybind-common ,strm ,key ,start ,dst
+                                       ,(normalize-cmd-format cmd)
+                                       ,msg)))
                   key-command-msg-lst)))
     `(progn
        ,@forms)))
