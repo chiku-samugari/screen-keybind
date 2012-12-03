@@ -316,6 +316,15 @@
 
 (defparameter *hardstatus-string* "")
 
+(defun message (msg &optional (show-state nil show-state-p)
+                              (hardstatus-format *hardstatus-string*))
+  (make-dqstring
+    (concat-str
+      (if show-state-p
+        (concat-str "%{= }%?%E[" show-state  "]" msg "%:[raw]%?")
+        msg)
+      hardstatus-format)))
+
 ;;; Dec. 3rd 2012, chiku
 ;;; In order to output one ^ in the hardstatus line, a man should provide
 ;;; "\"\\^\\^\"" to screen-keybind, and screen-keybind will convert it into
@@ -324,18 +333,10 @@
 ;;; the reason for why I write the escape process in this function and why
 ;;; I do not write such escape process for MESSAGE function.
 (defun default-message (dst primary-command-desc)
-  (make-dqstring
-    (concat-str "%{= }%?%E[" (resolve-string dst) "]"
-                (if (not (zerop (length primary-command-desc)))
-                  (concat-str " ("
-                              (escape #\^ primary-command-desc #\^)
-                              ")")
-                  "")
-                "%:[raw]%?" *hardstatus-string*)))
-
-(defun message (msg &optional (hardstatus-format *hardstatus-string*))
-  (make-dqstring
-    (concat-str msg hardstatus-format)))
+  (message (if (not (zerop (length primary-command-desc)))
+             (concat-str " (" (escape #\^ primary-command-desc #\^) ")")
+             "")
+           (resolve-string dst)))
 
 (defun set-hardstatus-string (str)
   (progn (setf *hardstatus-string* str)
