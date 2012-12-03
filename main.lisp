@@ -169,13 +169,32 @@
     ""
     (apply #'spacing-join evalarg-lst)))
 
+(defun insertion-command-p (comitem)
+  ;;; [FIX] The logic here should be improved.
+  (in-if (papply #'string= comitem)
+         (make-evalarg "title")
+         (make-evalarg "colon") (make-evalarg "copy")))
+
+(defun gen-insert-state-name (state-desc)
+  (concat-str state-desc "-insert"))
+
+(defun next-state (start-desc goal-desc whole-evalarg-lst)
+  (if (some #'insertion-command-p (flatten whole-evalarg-lst))
+    (progn
+      (pushnew goal-desc (symbol-plist 'require-insert) :test #'equal)
+      (gen-insert-state-name start-desc))
+    goal-desc))
+
 (defun keybind-desc (key start-state goal-state prior-evalargs post-evalargs)
   (string-trim " "
                (spacing-join (state-leave-desc start-state)
                              (resolve-string key)
                              "eval"
                              (process-evalarg-lst prior-evalargs)
-                             (state-arrive-desc goal-desc)
+                             (state-arrive-desc
+                               (next-state (resolve-string start-state)
+                                           (resolve-string goal-state)
+                                           (list prior-evalargs post-evalargs)))
                              (process-evalarg-lst post-evalargs))))
 
 (princ
@@ -283,10 +302,10 @@
 
 (defmacro keybind (strm key start goal (&rest prior-coms) (&rest post-coms))
   " key : a string or a character or an integer
-    start,goal : a symbol. not evaluated.
+    start,goal : evaluated.
   "
   `(format ,strm "~a~%"
-           (keybind-desc ,key ',start ',goal
+           (keybind-desc ,key ,start ,goal
                          ,(comseq-construct-form prior-coms)
                          ,(comseq-construct-form post-coms))))
 
@@ -296,8 +315,8 @@
 ;;; emphasize here is, do not use it in a function definition. It works in
 ;;; macro for constructing a code.
 
-(keybind t "^c" raw screen ((focus up)) ())
-(keybind t "^p" window-select window-select
+(keybind t "^c" 'raw 'screen ((focus up)) ())
+(keybind t "^p" 'window-select 'window-select
          ((prev))
          ((echo (make-dqstring "[window-select] (prev)"))))
 ;;; Both of following two commands outputs [s] as an echo message:
@@ -311,7 +330,7 @@
 ;;; The :LISP form allows follwing thing. This example is not preferrable, though.
 (let ((x "'focus down'")
       (y "-v"))
-  (keybind nil "j" window-select window-select
+  (keybind nil "j" 'window-select 'window-select
            ((:lisp x) (focus up) (split (:lisp y)))
            ()))
 
@@ -355,28 +374,29 @@
   " message : any form that is evaluated into a string.
               A string literal is welcome, of course.
    "
-  `(keybind ,strm ,key ,start ,dst
-            ,commands
-            (,(cond ((null message)
-                     `(hardstatus string
-                                  (:lisp (default-message
-                                           ',dst
-                                           (spacing-join
-                                             ,@(mapcar #'comitem-stringify-form
-                                                       (car commands)))))))
-                    ((zerop (length message)) ())
-                    (t `(hardstatus string (:lisp (message ,message))))))))
+  (once-only (dst)
+    `(keybind ,strm ,key ,start ,dst
+              ,commands
+              (,(cond ((null message)
+                       `(hardstatus string
+                                    (:lisp (default-message
+                                             ,dst
+                                             (spacing-join
+                                               ,@(mapcar #'comitem-stringify-form
+                                                         (car commands)))))))
+                      ((zerop (length message)) ())
+                      (t `(hardstatus string ,message)))))))
 
-(keybind-common t "j" snormal snormal ((focus down)))
-(keybind-common t "k" screen raw ((focus up)) "focus up")
-(keybind-common t "v" screen raw ((split -v) (focus right) (other) (focus left)) "vertical split")
-(keybind-common t "v" snormal snormal ((split -v) (focus right) (other) (focus left)))
-(keybind-common t "s" snormal snormal ((split) (focus right) (other) (focus left)))
+(keybind-common t "j" 'snormal 'snormal ((focus down)))
+(keybind-common t "k" 'screen 'raw ((focus up)) "focus up")
+(keybind-common t "v" 'screen 'raw ((split -v) (focus right) (other) (focus left)) "vertical split")
+(keybind-common t "v" 'snormal 'snormal ((split -v) (focus right) (other) (focus left)))
+(keybind-common t "s" 'snormal 'snormal ((split) (focus right) (other) (focus left)))
 ; a form generates the message
-(keybind-common nil "l" snormal snormal ((focus right)) (coerce (coerce "focus right" 'list) 'string))
-(keybind-common nil "l" snormal snormal ((focus right)) "")
-(keybind-common nil "^z" raw screen ())
-(keybind-common t "^" snormal-insert snormal-insert ((stuff ^)))
+(keybind-common nil "l" 'snormal 'snormal ((focus right)) (coerce (coerce "focus right" 'list) 'string))
+(keybind-common nil "l" 'snormal 'snormal ((focus right)) "")
+(keybind-common nil "^z" 'raw 'screen ())
+(keybind-common t "^" 'snormal-insert 'snormal-insert ((stuff ^)))
 
 (defun normalize-cmd-format (cmd)
   (cond ((null cmd) '())
@@ -385,25 +405,26 @@
         (t cmd)))
 
 (defmacro multiple-keybinds (strm start dst &body key-command-msg-lst)
-  (let ((forms
-          (mapcar (lambda (key-com-msg)
-                    (destructuring-bind (key cmd &optional msg)
-                      key-com-msg
-                      `(keybind-common ,strm ,key ,start ,dst
-                                       ,(normalize-cmd-format cmd)
-                                       ,msg)))
-                  key-command-msg-lst)))
-    `(progn
-       ,@forms)))
+  (once-only (strm start dst)
+    (let ((forms
+            (mapcar (lambda (key-com-msg)
+                      (destructuring-bind (key cmd &optional msg)
+                        key-com-msg
+                        `(keybind-common ,strm ,key ,start ,dst
+                                         ,(normalize-cmd-format cmd)
+                                         ,msg)))
+                    key-command-msg-lst)))
+      `(progn
+         ,@forms))))
 
-(multiple-keybinds t snormal snormal
+(multiple-keybinds t 'snormal 'snormal
   ("k" (focus up))
   ("j" (focus down))
   ("^i" (focus next))
   ("s" ((split) (focus down) (other) (focus up)))
   ("v" ((split -v) (focus right) (other) (focus left)) "vertical split"))
 
-(multiple-keybinds t screen raw
+(multiple-keybinds t 'screen 'raw
   ("^n" next)
   ("^p" prev)
   (0 (select 0))

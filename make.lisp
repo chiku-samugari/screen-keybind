@@ -8,6 +8,8 @@
 
 (load "reader-definitions.lisp")
 
+(load "insert-mode.lisp")
+
 (load "read-rcsource.lisp")
 
 (defun main ()
