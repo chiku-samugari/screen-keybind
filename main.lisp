@@ -97,12 +97,15 @@
          (list ,prepend-char ,c)
          (list ,c)))))
 
-(defmacro escape (prepend-char str &rest chars)
-  `(coerce (mapcan (gen-escape-fn ,prepend-char ,@chars)
-                   (coerce ,str 'cons))
-           'string))
-
 (macroexpand-1 '(gen-escape-fn #\\ #\" #\# #\^))
+
+(defmacro escape (prepend-char str &rest chars)
+  (once-only (prepend-char)
+    `(coerce (mapcan (gen-escape-fn ,prepend-char ,@chars)
+                     (coerce ,str 'cons))
+             'string)))
+
+(macroexpand-1 '(escape #\\ "^^" #\" #\# #\^))
 
 (defun make-dqstring (str)
   " Returns a string whose content is recognized identical to ``str'';{{{
