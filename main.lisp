@@ -212,11 +212,13 @@
 (defun gen-insert-state-name (state-desc)
   (concat-str state-desc "-insert"))
 
+(defparameter *require-insert* nil)
+
 (defun next-state (start-desc goal-desc whole-evalarg-lst)
   (if (and (some #'input-invoke-p whole-evalarg-lst)
            (string/= start-desc "raw"))
     (progn
-      (pushnew goal-desc (symbol-plist 'require-insert) :test #'equal)
+      (pushnew goal-desc *require-insert* :test #'equal)
       (gen-insert-state-name start-desc))
     goal-desc))
 
@@ -433,7 +435,7 @@
                                              (spacing-join
                                                ,@(mapcar #'comitem-stringify-form
                                                          (car commands)))))))
-                      ((zerop (length message)) '(:lisp (make-comitemseq "")))
+                      ((zerop (length message)) '(:lisp (make-comitemseq ""))) ; may be obsolete.
                       (t `(hardstatus string ,message)))))))
 
 (keybind-common t "j" 'snormal 'snormal ((focus down)))
