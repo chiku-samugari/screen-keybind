@@ -41,6 +41,7 @@ hardstatus-string "%030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.}
   [c screen]
   [^l redisplay]
   [t title]
+  [":" colon]
 }
 
 {snormal raw
@@ -58,7 +59,6 @@ hardstatus-string "%030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.}
   [- select -]
   [w windowlist -b]
   ; others
-  [":" colon]
   ["^[" copy]
 }
 

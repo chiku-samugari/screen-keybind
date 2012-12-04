@@ -127,7 +127,9 @@
            not screen string.
   ";}}}
   (dqstringify
-    (escape #\\ str #\" #\# #\^ #\\)))
+    (if (zerop (length str))
+      ""
+      (escape #\\ str #\" #\# #\^ #\\))))
 
 (join/40 "split" "-v")
 (princ
@@ -139,8 +141,28 @@
                    ("other")
                    ("focus" "left"))))))
 
-(defun make-evalarg (&rest command-components)
-  (apply #'join/40 (mapcar #'make-dqstring command-components)))
+;;; Dec. 5th 2012, chiku
+;;; Please be careful that a COMITEM is not a double-quoted screen string.
+(defclass comitemseq ()
+  ((command :initarg :command :reader command)
+   (args :initarg :args :reader args)))
+
+(defun make-comitemseq (command &rest args)
+  (make-instance 'comitemseq :command command :args args))
+
+;;; It's not a good use of generic function. I just want to warn if this
+;;; method was applied to an object that is not a COMITEMSEQ, and the easiest
+;;; way is the adoption of generic function.
+(defgeneric make-evalarg (com&args)
+  (:documentation "Return an evalarg by concatenating command and arguments."))
+
+(defun evalargify (&rest comitems)
+  (apply #'join/40 (mapcar #'make-dqstring comitems)))
+
+(defmethod make-evalarg ((com&args comitemseq))
+  (apply #'evalargify (command com&args) (args com&args)))
+
+(equal (make-evalarg (make-comitemseq "focus" "left")) "\"focus\"\\40\"left\"")
 
 (defun state-leave-desc (state)
   (case state
@@ -151,8 +173,8 @@
 (defun state-arrive-desc (state)
   (case state
     (raw "")
-    (screen (make-evalarg "command"))
-    (t (make-evalarg "command" "-c" (resolve-string state)))))
+    (screen (evalargify "command"))
+    (t (evalargify "command" "-c" (resolve-string state)))))
 
 (princ (state-arrive-desc 'screen))
 (princ (state-arrive-desc 'snormal))
@@ -162,48 +184,68 @@
 ;;; key : string or an integer number or a character. Symbol is NOT allowed.
 ;;;       How to treat octal numbers?
 
-(defun process-evalarg-lst (evalarg-lst)
-  (if (or (null evalarg-lst)
-          (and (null (cdr evalarg-lst))
-               (zerop (length (car evalarg-lst)))))
-    ""
-    (apply #'spacing-join evalarg-lst)))
+; dygraph : seems very difficult to support a insert mode for this command.
+; help : maybe
+; password : althoug the reason is different from dygraph's case, this seems
+;            difficult, too.
+; su : similar to password command.
+(defun input-invoke-p (comitemseq)
+  (with-slots (command args) comitemseq
+    (macrolet ((regardless-of-args (&rest strs)
+                 `(in-if (papply #'string= command) ,@strs))
+               (if-completely-same (&rest str-lsts)
+                 `(in-if (papply #'string= (make-evalarg comitemseq))
+                         ,@(mapcar #`(evalargify ,@(if (consp a0) a0 (list a0))) str-lsts))))
+      (or (regardless-of-args "colon" "copy" "windowlist")
+          (if-completely-same "stuff" "title" "paste" "process" "readreg"
+                              "select" "setenv" "su")
+          (and (string= "setenv" command) (= (length args) 2))))))
 
-(defun insertion-command-p (comitem)
-  ;;; [FIX] The logic here should be improved.
-  (in-if (papply #'string= comitem)
-         (make-evalarg "title")
-         (make-evalarg "colon") (make-evalarg "copy")))
+(and
+  (input-invoke-p (make-comitemseq "windowlist" "-b"))
+  (input-invoke-p (make-comitemseq "windowlist"))
+  (input-invoke-p (make-comitemseq "stuff"))
+  (not (input-invoke-p (make-comitemseq "stuff" "\\60")))
+  (input-invoke-p (make-comitemseq "title"))
+  (not (input-invoke-p (make-comitemseq "title" "Lisp"))))
 
 (defun gen-insert-state-name (state-desc)
   (concat-str state-desc "-insert"))
 
 (defun next-state (start-desc goal-desc whole-evalarg-lst)
-  (if (some #'insertion-command-p (flatten whole-evalarg-lst))
+  (if (and (some #'input-invoke-p whole-evalarg-lst)
+           (string/= start-desc "raw"))
     (progn
       (pushnew goal-desc (symbol-plist 'require-insert) :test #'equal)
       (gen-insert-state-name start-desc))
     goal-desc))
 
-(defun keybind-desc (key start-state goal-state prior-evalargs post-evalargs)
+(defun process-comitemseq-lst (comitemseq-lst)
+  (if (or (null comitemseq-lst)
+          (and (null (cdr comitemseq-lst))
+               (zerop (length (command (car comitemseq-lst))))))
+    ""
+    (apply #'spacing-join (mapcar #'make-evalarg comitemseq-lst))))
+
+(defun keybind-desc (key start-state goal-state prior-commands post-commands)
   (string-trim " "
                (spacing-join (state-leave-desc start-state)
                              (resolve-string key)
                              "eval"
-                             (process-evalarg-lst prior-evalargs)
+                             (process-comitemseq-lst prior-commands)
                              (state-arrive-desc
                                (next-state (resolve-string start-state)
                                            (resolve-string goal-state)
-                                           (list prior-evalargs post-evalargs)))
-                             (process-evalarg-lst post-evalargs))))
+                                           (append prior-commands post-commands)))
+                             (process-comitemseq-lst post-commands))))
 
 (princ
-  (keybind-desc #\t 'snormal 'snormal (list (make-evalarg "colon"))
-                (list (make-evalarg "echo" "[screen-insert] (colon)"))))
+  (keybind-desc #\t 'snormal 'snormal (list (make-comitemseq "colon"))
+                (list (make-comitemseq "echo" "[screen-insert] (colon)"))))
 ;;; Another format of above one. These two does same thing.
 (princ
-  (keybind-desc #\t 'snormal 'snormal (list (make-evalarg "colon"))
-                (list (make-evalarg"echo" "\"[screen-insert]\\40(colon)\""))))
+  (keybind-desc #\t 'snormal 'snormal (list (make-comitemseq "colon"))
+                (list (make-comitemseq"echo" "\"[screen-insert]\\40(colon)\""))))
 ;;; Dec. 3rd 2012, chiku
 ;;; As you can aware, one argument for eval command  is a non-quoted screen
 ;;; string. In screen-keybind project, it is called EVALARG. In non-quoted
@@ -233,36 +275,52 @@
 ;;;
 ;;; I do not know if I should implement it on this layer. I think both of them
 ;;; are acceptable.
+;;;
+;;; Dec. 5th 2012, chiku
+;;;  In order to implement complete version of INPUT-INVOKE-P, EVALARG source
+;;; that is expressed as a list of comitems is desiable on the KEYBIND-DESC's
+;;; level. I decided to introduce a class called COMITEMSEQ and pass instances
+;;; of this class to KEYBIND-DESC. COMITEMSEQ holds command and its arguments,
+;;; the material of evalargs in short. KEYBIND-DESC will finally construct
+;;; EVALARGs by using EVALARGIFY function, the function used to call
+;;; MAKE-EVALARG, through new MAKE-EVALARG function.
+;;;  The judgement about input-requiring commands is more complex than what I
+;;; expected. It requires not only the command name but also what argument is
+;;; used or how many arguments are given. The splitting of a EVALARG is quite
+;;; difficult. In my consideration, it is impossible to do it correctly in
+;;; general because any kind of separator can be included as a content of
+;;; hardstatus string argument. I therefore decided to carry out the evalarg-ify
+;;; on KEYBIND-DESC level by introducing COMITEMSEQ class.
 
 (keybind-desc #\C 'screen "X"
-              (list (make-evalarg "split" "-v") (make-evalarg "focus" "right")
-                    (make-evalarg "other") (make-evalarg "focus" "left"))
-              (list (make-evalarg "echo" "enter [X]")))
+              (list (make-comitemseq "split" "-v") (make-comitemseq "focus" "right")
+                    (make-comitemseq "other") (make-comitemseq "focus" "left"))
+              (list (make-comitemseq "echo" "enter [X]")))
 
 (keybind-desc 'c 'screen "X"
-              (list (make-evalarg "split" "-v") (make-evalarg "focus" "right")
-                    (make-evalarg "other") (make-evalarg "focus" "left"))
-              (list (make-evalarg "echo" "enter [X]")))
+              (list (make-comitemseq "split" "-v") (make-comitemseq "focus" "right")
+                    (make-comitemseq "other") (make-comitemseq "focus" "left"))
+              (list (make-comitemseq "echo" "enter [X]")))
 
 (keybind-desc "^v" 'screen "X"
-              (list (make-evalarg "split" "-v") (make-evalarg "focus" "right")
-                    (make-evalarg "other") (make-evalarg "focus" "left"))
-              (list (make-evalarg "echo" "enter [X]")))
+              (list (make-comitemseq "split" "-v") (make-comitemseq "focus" "right")
+                    (make-comitemseq "other") (make-comitemseq "focus" "left"))
+              (list (make-comitemseq "echo" "enter [X]")))
 
 (keybind-desc "^s" "X" "X"
-              (list (make-evalarg "split" "-v") (make-evalarg "focus" "right")
-                    (make-evalarg "other") (make-evalarg "focus" "left"))
-              (list (make-evalarg "echo" "enter [X]")))
+              (list (make-comitemseq "split" "-v") (make-comitemseq "focus" "right")
+                    (make-comitemseq "other") (make-comitemseq "focus" "left"))
+              (list (make-comitemseq "echo" "enter [X]")))
 
 (keybind-desc "v" "X" "X"
-              (list (make-evalarg "split" "-v") (make-evalarg "focus" "right")
-                    (make-evalarg "other") (make-evalarg "focus" "left"))
+              (list (make-comitemseq "split" "-v") (make-comitemseq "focus" "right")
+                    (make-comitemseq "other") (make-comitemseq "focus" "left"))
               ())
 
 (keybind-desc "v" "X" "X"
-              (list (make-evalarg "split" "-v") (make-evalarg "focus" "right")
-                    (make-evalarg "other") (make-evalarg "focus" "left"))
-              (list ""))
+              (list (make-comitemseq "split" "-v") (make-comitemseq "focus" "right")
+                    (make-comitemseq "other") (make-comitemseq "focus" "left"))
+              (list (make-comitemseq "")))
 
 (defun take-lispcode (x)
   (cadr x))
@@ -281,24 +339,22 @@
 (comitem-stringify-form '(coerce (list #\l #\e #\f #\t) 'string))
 (comitem-stringify-form '(:lisp (concatenate 'string (list #\c #\l))))
 
-(defun com-evalargify-form (com)
+(defun make-comitemseq-form (com)
   (if (eq (car com) :lisp)
     (take-lispcode com)
-    `(make-evalarg ,@(mapcar #'comitem-stringify-form com))))
+    `(make-comitemseq ,@(mapcar #'comitem-stringify-form com))))
 
-(com-evalargify-form '(focus left))
-(com-evalargify-form '(focus (coerce (list #\l #\e #\f #\t) 'string)))
-(com-evalargify-form '(:lisp (concatenate 'string "focus " (concatenate 'string "ri" "ght"))))
+(make-comitemseq-form '(focus left))
+(make-comitemseq-form '(focus (coerce (list #\l #\e #\f #\t) 'string)))
+(make-comitemseq-form '(:lisp (concatenate 'string "focus " (concatenate 'string "ri" "ght"))))
 
 (defun comseq-construct-form (comseq)
   (if (eq (car comseq) :lisp)
     (take-lispcode comseq)
-    `(list ,@(mapcar #'com-evalargify-form comseq))))
+    `(list ,@(mapcar #'make-comitemseq-form comseq))))
 
 (comseq-construct-form '((split -v) (focus right) (other) (focus left)))
 (comseq-construct-form '((split) (:lisp (string #\c))))
-(comseq-construct-form '(:lisp (list "split -v" (concat-str "fo" "cus" " right"
-                                                            (spacing-join " other" "focus" "left")))))
 
 (defmacro keybind (strm key start goal (&rest prior-coms) (&rest post-coms))
   " key : a string or a character or an integer
@@ -309,7 +365,7 @@
                          ,(comseq-construct-form prior-coms)
                          ,(comseq-construct-form post-coms))))
 
-;;; COMSEQ-CONSTRUCT-FORM, COM-EVALARGIFY-FORM and COMITEM-STRINGIFY-FORM return
+;;; COMSEQ-CONSTRUCT-FORM, MAKE-COMMAND-FORM and COMITEM-STRINGIFY-FORM return
 ;;; a form that returns one string if evaluated. A function that returns a form
 ;;; is of course quite natural when we are writing macros. What I want to
 ;;; emphasize here is, do not use it in a function definition. It works in
@@ -322,17 +378,10 @@
 ;;; Both of following two commands outputs [s] as an echo message:
 ;;;     1. eval "echo"\40"[s]"
 ;;;     2. eval "echo"\40"\"[s]\""
-;;; In 1., [s] is the argument for echo command. The argument for echo command
-;;; in 2. is "[s]".
+;;; In 1., [s] is the argument for echo command. That is a non-quoted string.
+;;; The argument for echo command in 2. is "[s]". That is a double-quoted string.
 ;;;     alt-1. echo [s]
 ;;;     alt-2. echo "[s]"
-
-;;; The :LISP form allows follwing thing. This example is not preferrable, though.
-(let ((x "'focus down'")
-      (y "-v"))
-  (keybind nil "j" 'window-select 'window-select
-           ((:lisp x) (focus up) (split (:lisp y)))
-           ()))
 
 (define-symbol-macro escape (format t "~&escape ~a~%" (resolve-string (read))))
 
@@ -384,7 +433,7 @@
                                              (spacing-join
                                                ,@(mapcar #'comitem-stringify-form
                                                          (car commands)))))))
-                      ((zerop (length message)) ())
+                      ((zerop (length message)) '(:lisp (make-comitemseq "")))
                       (t `(hardstatus string ,message)))))))
 
 (keybind-common t "j" 'snormal 'snormal ((focus down)))
@@ -396,6 +445,7 @@
 (keybind-common nil "l" 'snormal 'snormal ((focus right)) (coerce (coerce "focus right" 'list) 'string))
 (keybind-common nil "l" 'snormal 'snormal ((focus right)) "")
 (keybind-common nil "^z" 'raw 'screen ())
+(keybind-common nil "^z" 'raw 'snormal ())
 (keybind-common t "^" 'snormal-insert 'snormal-insert ((stuff ^)))
 
 (defun normalize-cmd-format (cmd)
