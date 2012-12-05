@@ -166,14 +166,14 @@
 
 (defun state-leave-desc (state)
   (case state
-    (raw "bindkey")
-    (screen "bind")
+    (|raw| "bindkey")
+    (|screen| "bind")
     (t (concat-str "bind -c " (resolve-string state)))))
 
 (defun state-arrive-desc (state)
   (case state
-    (raw "")
-    (screen (evalargify "command"))
+    (|raw| "")
+    (|screen| (evalargify "command"))
     (t (evalargify "command" "-c" (resolve-string state)))))
 
 (princ (state-arrive-desc 'screen))
