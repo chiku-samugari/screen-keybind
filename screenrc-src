@@ -15,6 +15,7 @@ hardstatus-string "%030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.}
   [w windowlist -b]
   ["^]" paste]
   [t title]
+  [^v digraph]
 }
 
 {snormal snormal
@@ -42,6 +43,7 @@ hardstatus-string "%030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.}
   [^l redisplay]
   [t title]
   [":" colon]
+  [^v digraph]
 }
 
 {snormal raw

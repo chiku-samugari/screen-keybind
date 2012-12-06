@@ -176,19 +176,19 @@
     (|screen| (evalargify "command"))
     (t (evalargify "command" "-c" (resolve-string state)))))
 
-(princ (state-arrive-desc 'screen))
+(princ (state-arrive-desc '|screen|))
 (princ (state-arrive-desc 'snormal))
 
 ;;; desc : string
-;;; state : string-designator
+;;; state : symbol
 ;;; key : string or an integer number or a character. Symbol is NOT allowed.
 ;;;       How to treat octal numbers?
 
-; dygraph : seems very difficult to support a insert mode for this command.
+; digraph : 2 key transient insert
 ; help : maybe
-; password : althoug the reason is different from dygraph's case, this seems
-;            difficult, too.
-; su : similar to password command.
+; password : 2 layer insert
+; su : 2 layer insert
+; setenv (without argument) : 2 layer insert
 (defun input-invoke-p (comitemseq)
   (with-slots (command args) comitemseq
     (macrolet ((regardless-of-args (&rest strs)
@@ -196,10 +196,14 @@
                (if-completely-same (&rest str-lsts)
                  `(in-if (papply #'string= (make-evalarg comitemseq))
                          ,@(mapcar #`(evalargify ,@(if (consp a0) a0 (list a0))) str-lsts))))
-      (or (regardless-of-args "colon" "copy" "windowlist")
-          (if-completely-same "stuff" "title" "paste" "process" "readreg"
-                              "select" "setenv" "su")
-          (and (string= "setenv" command) (= (length args) 2))))))
+      (cond ((or (regardless-of-args "colon" "windowlist")
+                 (if-completely-same "stuff" "title" "paste" "process" "readreg"
+                                     "select")
+                 (and (string= "setenv" command) (= (length args) 2)))
+             (cons 'layer 1))
+            ((if-completely-same "password" "su" "setenv") (cons 'layer 2))
+            ((if-completely-same "digraph") (cons 'transient 2))
+            (t nil)))))
 
 (and
   (input-invoke-p (make-comitemseq "windowlist" "-b"))
@@ -209,18 +213,37 @@
   (input-invoke-p (make-comitemseq "title"))
   (not (input-invoke-p (make-comitemseq "title" "Lisp"))))
 
-(defun gen-insert-state-name (state-desc)
-  (concat-str state-desc "-insert"))
+(defun gen-insert-state (primary-state mode n)
+  (intern (format nil "~a-insert-~a~a" (resolve-string primary-state) (resolve-string mode) n)))
 
-(defparameter *require-insert* nil)
+(defstruct (istate (:constructor make-istate (&key mode primary-state insert-state next-state))
+                   (:constructor make-common-istate
+                    (mode primary-state next-state n
+                          &aux (insert-state (gen-insert-state primary-state mode n)))))
+  mode primary-state insert-state next-state)
 
-(defun next-state (start-desc goal-desc whole-evalarg-lst)
-  (if (and (some #'input-invoke-p whole-evalarg-lst)
-           (string/= start-desc "raw"))
-    (progn
-      (pushnew goal-desc *require-insert* :test #'equal)
-      (gen-insert-state-name start-desc))
-    goal-desc))
+(make-common-istate 'transient 'snormal 'x '1)
+
+(let ((istate-lst ()))
+  (defun add-insert-state (start-state goal-state mode n)
+    (dotimes (i n)
+      ;; name of a state should start from 1.
+      (pushnew (make-istate :mode mode :primary-state start-state
+                            :insert-state (gen-insert-state start-state mode (1+ i))
+                            :next-state (if (= i (1- n))
+                                          goal-state
+                                          (gen-insert-state start-state mode (+ 2 i))))
+               istate-lst
+               :test #'equalp))
+    (nth (1- n) istate-lst))
+  (defun get-istate-lst () (copy-list istate-lst))
+  (defun clr-istate-lst () (setf istate-lst nil)))
+
+(defun next-state (start-state goal-state whole-evalarg-lst)
+  (aif (and (not (eq goal-state '|raw|))
+            (some #'input-invoke-p whole-evalarg-lst))
+    (istate-insert-state (add-insert-state start-state goal-state (car it) (cdr it)))
+    goal-state))
 
 (defun process-comitemseq-lst (comitemseq-lst)
   (if (or (null comitemseq-lst)
@@ -236,8 +259,7 @@
                              "eval"
                              (process-comitemseq-lst prior-commands)
                              (state-arrive-desc
-                               (next-state (resolve-string start-state)
-                                           (resolve-string goal-state)
+                               (next-state start-state goal-state
                                            (append prior-commands post-commands)))
                              (process-comitemseq-lst post-commands))))
 
@@ -294,17 +316,17 @@
 ;;; hardstatus string argument. I therefore decided to carry out the evalarg-ify
 ;;; on KEYBIND-DESC level by introducing COMITEMSEQ class.
 
-(keybind-desc #\C 'screen "X"
+(keybind-desc #\C '|screen| "X"
               (list (make-comitemseq "split" "-v") (make-comitemseq "focus" "right")
                     (make-comitemseq "other") (make-comitemseq "focus" "left"))
               (list (make-comitemseq "echo" "enter [X]")))
 
-(keybind-desc 'c 'screen "X"
+(keybind-desc 'c '|screen| "X"
               (list (make-comitemseq "split" "-v") (make-comitemseq "focus" "right")
                     (make-comitemseq "other") (make-comitemseq "focus" "left"))
               (list (make-comitemseq "echo" "enter [X]")))
 
-(keybind-desc "^v" 'screen "X"
+(keybind-desc "^v" '|screen| "X"
               (list (make-comitemseq "split" "-v") (make-comitemseq "focus" "right")
                     (make-comitemseq "other") (make-comitemseq "focus" "left"))
               (list (make-comitemseq "echo" "enter [X]")))
@@ -373,7 +395,7 @@
 ;;; emphasize here is, do not use it in a function definition. It works in
 ;;; macro for constructing a code.
 
-(keybind t "^c" 'raw 'screen ((focus up)) ())
+(keybind t "^c" '|raw| '|screen| ((focus up)) ())
 (keybind t "^p" 'window-select 'window-select
          ((prev))
          ((echo (make-dqstring "[window-select] (prev)"))))
@@ -389,12 +411,12 @@
 
 (defparameter *hardstatus-string* "")
 
-(defun message (msg &optional (show-state nil show-state-p)
+(defun message (msg &optional (state-name nil state-name-p)
                               (hardstatus-format *hardstatus-string*))
   (make-dqstring
     (concat-str
-      (if show-state-p
-        (concat-str "%{= }%?%E[" show-state  "]" msg "%:[raw]%?")
+      (if state-name-p
+        (concat-str "%{= }%?%E[" state-name "]" msg "%:[raw]%?")
         msg)
       hardstatus-format)))
 
@@ -414,7 +436,7 @@
 (defun set-hardstatus-string (str)
   (progn (setf *hardstatus-string* str)
          (format t "~&hardstatus string ~a~%"
-                 (default-message 'screen ""))))
+                 (default-message '|screen| ""))))
 
 (define-symbol-macro hardstatus-string
                      (set-hardstatus-string (read)))
@@ -439,15 +461,16 @@
                       (t `(hardstatus string ,message)))))))
 
 (keybind-common t "j" 'snormal 'snormal ((focus down)))
-(keybind-common t "k" 'screen 'raw ((focus up)) "focus up")
-(keybind-common t "v" 'screen 'raw ((split -v) (focus right) (other) (focus left)) "vertical split")
+(keybind-common t "j" 'snormal '|screen| ((focus down)))
+(keybind-common t "k" '|screen| '|raw| ((focus up)) "focus up")
+(keybind-common t "v" '|screen| '|raw| ((split -v) (focus right) (other) (focus left)) "vertical split")
 (keybind-common t "v" 'snormal 'snormal ((split -v) (focus right) (other) (focus left)))
 (keybind-common t "s" 'snormal 'snormal ((split) (focus right) (other) (focus left)))
 ; a form generates the message
 (keybind-common nil "l" 'snormal 'snormal ((focus right)) (coerce (coerce "focus right" 'list) 'string))
 (keybind-common nil "l" 'snormal 'snormal ((focus right)) "")
-(keybind-common nil "^z" 'raw 'screen ())
-(keybind-common nil "^z" 'raw 'snormal ())
+(keybind-common nil "^z" '|raw| '|screen|())
+(keybind-common nil "^z" '|raw| 'snormal ())
 (keybind-common t "^" 'snormal-insert 'snormal-insert ((stuff ^)))
 
 (defun normalize-cmd-format (cmd)
@@ -476,7 +499,7 @@
   ("s" ((split) (focus down) (other) (focus up)))
   ("v" ((split -v) (focus right) (other) (focus left)) "vertical split"))
 
-(multiple-keybinds t 'screen 'raw
+(multiple-keybinds t '|screen|'|raw|
   ("^n" next)
   ("^p" prev)
   (0 (select 0))

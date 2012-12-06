@@ -19,3 +19,5 @@
       (chiku.genscreenrc:read-rcsrc (second *posix-argv*)))))
 
 (save-lisp-and-die "gen-screenrc" :toplevel 'main :executable t)
+
+(read-rcsrc "screenrc-src")

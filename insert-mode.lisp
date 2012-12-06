@@ -29,28 +29,43 @@
 (ctrl-code-p (char-code #\Newline))
 (ctrl-code-p (char-code #\!))
 
-(defmacro gen-insert-mode (goal &optional (leave-keys '(#\Bel #\Return #\Newline)))
-  (once-only (goal)
-    (with-gensyms (code insert-state-name)
-      `(let ((,insert-state-name (gen-insert-state-name (resolve-string ,goal))))
-         (dolist (,code (remove-if (lambda (x) (inq (code-char x) ,@leave-keys))
-                                   (iota #x80)))
-           (keybind-common t (octal-desc ,code) ,insert-state-name ,insert-state-name
-                           ((stuff (octal-desc ,code)))
-                           (default-message "insert"
-                                            (concat-str "stuff "
-                                                        (if (or (ctrl-code-p ,code) (= #o40 ,code))
-                                                          (char-name (code-char ,code))
-                                                          (string (code-char ,code)))))))
-         (dolist (,code (mapcar #'char-code ',leave-keys))
-           (keybind-common t (octal-desc ,code) ,insert-state-name ,goal
-                           ((stuff (octal-desc  ,code)))
-                           (default-message (resolve-string ,goal)
-                                            (concat-str "stuff "
-                                                        (if (ctrl-code-p ,code)
-                                                          (char-name (code-char ,code))
-                                                          (string (code-char ,code)))))))))))
+(defun use-charname-p (code)
+  (or (ctrl-code-p code) (= #o40 code)))
 
-;(macroexpand-1 '(gen-insert-mode snormal))
+(defun stuffmsg-string (code)
+  (concat-str "stuff "
+              (if (use-charname-p code)
+                (char-name (code-char code))
+                (string (code-char code)))))
+
+(defun gen-insert-mode (istate &optional
+                               (finish-keys '(#\Return #\Newline))
+                               (cancel-keys '(#\Bel)))
+  (macrolet ((aux (cur goal msg)
+               `(keybind-common t (octal-desc code)
+                                ,cur ,goal
+                                ((stuff (octal-desc code)))
+                                (default-message ,msg (stuffmsg-string code)))))
+    (with-slots (mode primary-state insert-state next-state) istate
+      (dolist (code (iota #x80))
+        (cond ((member (code-char code) finish-keys) (aux insert-state next-state next-state))
+              ((member (code-char code) cancel-keys)
+               (aux insert-state primary-state primary-state))
+              (t (aux insert-state (if (eq mode 'transient)
+                                     next-state insert-state)
+                      "insert")))))))
+
+;;; #\Bel, #\Newline and #\Return : "command", others : "command"\40"-c"\40"screen-insert-layer1"
+;(gen-insert-mode (make-common-istate 'layer '|screen| '|screen| 1))
+;;; all : "command"
+;(gen-insert-mode (make-common-istate 'transient '|screen| '|screen| 1))
+;;; #\Bel : "command"
+;;; others : "command"\40"-c"\40"screen-insert-transient2"
+;(gen-insert-mode (make-common-istate 'transient '|screen| '|screen-insert-transient2| 1))
+;;; #\Bel : "command"\40"-c"\40"snormal"
+;;; #\Newline and #\Return : "command"\40"-c"\40"snormal-insert-layer2"
+;;; others : "command"\40"-c"\40"screen-insert-layer1"
+;(gen-insert-mode (make-common-istate 'layer 'snormal '|snormal-insert-layer2| 1))
+
 ;(with-open-file (*standard-output* "insertmode.screen" :direction :output :if-exists :supersede)
-;  (gen-insert-mode 'snormal))
+;  (gen-insert-mode (make-common-istate 'layer 'snormal 'snormal 1)))

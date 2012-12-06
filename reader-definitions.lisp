@@ -31,7 +31,7 @@
   (destructuring-bind (start dst &rest key-cmdseqs)
     (with-preserved-symbolcase
       (read-delimited-list #\} strm t))
-    `(multiple-keybinds t ,(resolve-string start) ,(resolve-string dst) ,@key-cmdseqs)))
+    `(multiple-keybinds t ',start ',dst ,@key-cmdseqs)))
 
 (set-macro-character #\{ #'|{-reader| nil)
 
