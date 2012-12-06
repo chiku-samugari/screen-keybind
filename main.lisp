@@ -209,7 +209,8 @@
 
 (define-symbol-macro escape (format t "~&escape ~a~%" (resolve-string (read))))
 
-(defparameter *hardstatus-string* "")
+(defparameter *hardstatus-string*
+  "%030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.} %{-}%=%m/%d %02c")
 
 (defun message (msg &optional (state-name nil state-name-p)
                               (hardstatus-format *hardstatus-string*))
