@@ -20,21 +20,21 @@
                 (char-name (code-char code))
                 (string (code-char code)))))
 
-(defun gen-insert-mode (istate &optional
+(defun define-insert-mode (imode &optional
                                (finish-keys '(#\Return #\Newline))
                                (cancel-keys '(#\Bel)))
-  (macrolet ((aux (cur goal print-state msg)
+  (macrolet ((aux (cur goal print-mode msg)
                `(keybind-common t (octal-desc code)
                                 ,cur ,goal
                                 ((stuff (octal-desc code)))
-                                (default-message ,print-state ,msg))))
-    (with-slots (mode primary-state insert-state next-state) istate
+                                (default-message ,print-mode ,msg))))
+    (with-slots (mode primary-mode insert-mode next-mode) imode
       (dolist (code (iota #x80))
         (cond ((member (code-char code) finish-keys)
-               (aux insert-state next-state next-state ""))
+               (aux insert-mode next-mode next-mode ""))
               ((member (code-char code) cancel-keys)
-               (aux insert-state primary-state primary-state ""))
-              (t (aux insert-state (if (eq mode 'transient)
-                                     next-state insert-state)
+               (aux insert-mode primary-mode primary-mode ""))
+              (t (aux insert-mode (if (eq mode 'transient)
+                                     next-mode insert-mode)
                       "insert"
                       (stuffmsg-string code))))))))

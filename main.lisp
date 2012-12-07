@@ -1,8 +1,9 @@
 ;;;; Screen Keybind
 ;;; Nov. 27th 2012, chiku
-;;; I start the second implementation that can treat all state transition. Let me
-;;; call the initial state ``raw,'' the state after screen-escape key ``screen''
-;;; and all other states ``X.'' Then, following 9 patterns are possible:
+;;; I start the second implementation that can treat all state transition.
+;;; I use the terminology ``mode'' instead of ``state'' here.
+;;; Let me call the initial mode ``raw,'' the mode after screen-escape key
+;;; ``screen'' and all other modes ``X.'' Then, following 9 patterns are possible:
 ;;;
 ;;;     1. raw -> screen
 ;;;     2. screen -> X
@@ -14,8 +15,8 @@
 ;;;     8. screen -> screen
 ;;;     9. X -> X
 ;;;
-;;; Please be aware that ``->'' intends not only a state transition but also
-;;; a sequence of commands could be executed along to that state transition.
+;;; Please be aware that ``->'' intends not only a mode transition but also
+;;; a sequence of commands could be executed along to that mode transition.
 ;;; The required command sequence is different from 1. to 9. as follows:
 ;;;
 ;;;     1. escape ^z
@@ -103,17 +104,17 @@
 (defmethod make-evalarg ((com&args comitemseq))
   (apply #'evalargify (command com&args) (args com&args)))
 
-(defun state-leave-desc (state)
-  (case state
+(defun mode-leave-desc (mode)
+  (case mode
     (|raw| "bindkey")
     (|screen| "bind")
-    (t (concat-str "bind -c " (resolve-string state)))))
+    (t (concat-str "bind -c " (resolve-string mode)))))
 
-(defun state-arrive-desc (state)
-  (case state
+(defun mode-arrive-desc (mode)
+  (case mode
     (|raw| "")
     (|screen| (evalargify "command"))
-    (t (evalargify "command" "-c" (resolve-string state)))))
+    (t (evalargify "command" "-c" (resolve-string mode)))))
 
 (defun input-invoke-p (comitemseq)
   (with-slots (command args) comitemseq
@@ -131,35 +132,35 @@
             ((if-completely-same "digraph") (cons 'transient 2))
             (t nil)))))
 
-(defun gen-insert-state (primary-state mode n)
-  (intern (format nil "~a-insert-~a~a" (resolve-string primary-state) (resolve-string mode) n)))
+(defun gen-insert-mode (primary-mode mode n)
+  (intern (format nil "~a-insert-~a~a" (resolve-string primary-mode) (resolve-string mode) n)))
 
-(defstruct (istate (:constructor make-istate (&key mode primary-state insert-state next-state))
-                   (:constructor make-common-istate
-                    (mode primary-state next-state n
-                          &aux (insert-state (gen-insert-state primary-state mode n)))))
-  mode primary-state insert-state next-state)
+(defstruct (imode (:constructor make-imode (&key mode primary-mode insert-mode next-mode))
+                   (:constructor make-common-imode
+                    (mode primary-mode next-mode n
+                          &aux (insert-mode (gen-insert-mode primary-mode mode n)))))
+  mode primary-mode insert-mode next-mode)
 
-(let ((istate-lst ()))
-  (defun add-insert-state (start-state goal-state mode n)
+(let ((imode-lst ()))
+  (defun add-insert-mode (start-mode goal-mode mode n)
     (dotimes (i n)
-      ;; name of a state should start from 1.
-      (pushnew (make-istate :mode mode :primary-state start-state
-                            :insert-state (gen-insert-state start-state mode (1+ i))
-                            :next-state (if (= i (1- n))
-                                          goal-state
-                                          (gen-insert-state start-state mode (+ 2 i))))
-               istate-lst
+      ;; name of a mode should start from 1.
+      (pushnew (make-imode :mode mode :primary-mode start-mode
+                            :insert-mode (gen-insert-mode start-mode mode (1+ i))
+                            :next-mode (if (= i (1- n))
+                                          goal-mode
+                                          (gen-insert-mode start-mode mode (+ 2 i))))
+               imode-lst
                :test #'equalp))
-    (nth (1- n) istate-lst))
-  (defun get-istate-lst () (copy-list istate-lst))
-  (defun clr-istate-lst () (setf istate-lst nil)))
+    (nth (1- n) imode-lst))
+  (defun get-imode-lst () (copy-list imode-lst))
+  (defun clr-imode-lst () (setf imode-lst nil)))
 
-(defun next-state (start-state goal-state whole-evalarg-lst)
-  (aif (and (not (eq goal-state '|raw|))
+(defun next-mode (start-mode goal-mode whole-evalarg-lst)
+  (aif (and (not (eq goal-mode '|raw|))
             (some #'input-invoke-p whole-evalarg-lst))
-    (istate-insert-state (add-insert-state start-state goal-state (car it) (cdr it)))
-    goal-state))
+    (imode-insert-mode (add-insert-mode start-mode goal-mode (car it) (cdr it)))
+    goal-mode))
 
 (defun process-comitemseq-lst (comitemseq-lst)
   (if (or (null comitemseq-lst)
@@ -168,14 +169,14 @@
     ""
     (apply #'spacing-join (mapcar #'make-evalarg comitemseq-lst))))
 
-(defun keybind-desc (key start-state goal-state prior-commands post-commands)
+(defun keybind-desc (key start-mode goal-mode prior-commands post-commands)
   (string-trim " "
-               (spacing-join (state-leave-desc start-state)
+               (spacing-join (mode-leave-desc start-mode)
                              (resolve-string key)
                              "eval"
                              (process-comitemseq-lst prior-commands)
-                             (state-arrive-desc
-                               (next-state start-state goal-state
+                             (mode-arrive-desc
+                               (next-mode start-mode goal-mode
                                            (append prior-commands post-commands)))
                              (process-comitemseq-lst post-commands))))
 
@@ -212,12 +213,12 @@
 (defparameter *hardstatus-string*
   "%030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.} %{-}%=%m/%d %02c")
 
-(defun message (msg &optional (state-name nil state-name-p)
+(defun message (msg &optional (mode-name nil mode-name-p)
                               (hardstatus-format *hardstatus-string*))
   (make-dqstring
     (concat-str
-      (if state-name-p
-        (concat-str "%{= }%?%E[" state-name "]" msg "%:[raw]%?")
+      (if mode-name-p
+        (concat-str "%{= }%?%E[" mode-name "]" msg "%:[raw]%?")
         msg)
       hardstatus-format)))
 
