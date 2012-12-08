@@ -1,7 +1,7 @@
 ;;;; Readers for reading more easier formats.
 ;;; Nov. 25th 2012, chiku
 ;;; This is the last step.
-(in-package :chiku.genscreenrc)
+(in-package :chiku.screen-keybind)
 
 (defmacro with-preserved-symbolcase (&body body)
   (with-gensyms (save-readtable-case)

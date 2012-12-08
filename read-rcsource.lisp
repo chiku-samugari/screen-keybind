@@ -1,7 +1,7 @@
 ;;;; Read screenrc source
 ;;; Tiny program for reading screenrc source and generate
 ;;; screenrc from it.
-(in-package :chiku.genscreenrc)
+(in-package :chiku.screen-keybind)
 
 (defun read-rcsrc (src-filename &optional (output t))
   (clr-imode-lst)

@@ -3,7 +3,7 @@
 ;;; In order to keep snormal mode after the execution of a command
 ;;; that comes with input, we have to avoid going back to the raw
 ;;; mode during the input.
-(in-package :chiku.genscreenrc)
+(in-package :chiku.screen-keybind)
 
 (defun octal-desc (code)
   (format nil "\\~o" code))

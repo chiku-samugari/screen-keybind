@@ -11,9 +11,9 @@
 (load "read-rcsource.lisp")
 
 (defun main ()
-  (let ((*package* (find-package :chiku.genscreenrc)))
+  (let ((*package* (find-package :chiku.screen-keybind)))
     (aif (third *posix-argv*)
-      (chiku.genscreenrc:read-rcsrc (second *posix-argv*) it)
-      (chiku.genscreenrc:read-rcsrc (second *posix-argv*)))))
+      (chiku.screen-keybind:read-rcsrc (second *posix-argv*) it)
+      (chiku.screen-keybind:read-rcsrc (second *posix-argv*)))))
 
 (save-lisp-and-die "screen-keybind" :toplevel 'main :executable t)

@@ -1,5 +1,5 @@
 (in-package :cl-user)
 
-(defpackage :chiku.genscreenrc
+(defpackage :chiku.screen-keybind
   (:use :cl :chiku.util)
   (:export :read-rcsrc))

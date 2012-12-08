@@ -70,8 +70,10 @@ hardstatus-string %030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.} 
   [P layout prev]
   [N layout next]
   [D layout remove]
-  ;[ layout title]
-  ;[ layout number]
-  ;[ layout show]
-  ;[ layout select]
+#|
+  [ layout title]
+  [ layout number]
+  [ layout show]
+  [ layout select]
+|#
 }

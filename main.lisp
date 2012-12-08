@@ -33,7 +33,7 @@
 ;;;
 ;;; As you can see, we have to properly use 3 diffierent commands ``bind,''
 ;;; ``bind -c'' and ``bindkey.''
-(in-package :chiku.genscreenrc)
+(in-package :chiku.screen-keybind)
 
 (defun resolve-string (strsrc)
   (cond ((numberp strsrc) (itoa strsrc))
