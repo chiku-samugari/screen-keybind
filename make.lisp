@@ -16,4 +16,4 @@
       (chiku.genscreenrc:read-rcsrc (second *posix-argv*) it)
       (chiku.genscreenrc:read-rcsrc (second *posix-argv*)))))
 
-(save-lisp-and-die "gen-screenrc" :toplevel 'main :executable t)
+(save-lisp-and-die "screen-keybind" :toplevel 'main :executable t)
