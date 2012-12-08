@@ -66,10 +66,10 @@ hardstatus-string %030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.} 
 
 ; layout
 {snormal snormal
-  ["L" layout new]
-  ["P" layout prev]
-  ["N" layout next]
-  ["D" layout remove]
+  [L layout new]
+  [P layout prev]
+  [N layout next]
+  [D layout remove]
   ;[ layout title]
   ;[ layout number]
   ;[ layout show]

@@ -12,12 +12,17 @@
            ,@body)
          (setf (readtable-case *readtable*) ,save-readtable-case)))))
 
+(defun case-sensitive-resolve-string (strsrc)
+  (if (symbolp strsrc)
+    (symbol-name strsrc)
+    (resolve-string strsrc)))
+
 (defun |[-reader| (strm c)
   (declare (ignore c))
   (destructuring-bind (key &rest cmdseq)
     (with-preserved-symbolcase
       (read-delimited-list #\] strm t))
-    (list (resolve-string key)
+    (list (case-sensitive-resolve-string key)
           (multiple-value-bind (result top)
             (group-headed '! cmdseq :mark-discard? t)
             (if top (cons top result) result)))))
