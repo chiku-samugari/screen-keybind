@@ -234,7 +234,8 @@
                  (default-message '|screen| ""))))
 
 (define-symbol-macro hardstatus-string
-                     (set-hardstatus-string (read)))
+                     (set-hardstatus-string (string-trim (concat-str " " (string #\Tab))
+                                                         (read-line))))
 
 (defmacro keybind-common (strm key start dst (&rest commands) &optional message)
   " message : any form that is evaluated into a string.
