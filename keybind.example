@@ -1,16 +1,19 @@
-escape ^z^z
+;;; Author: chiku (Takehiko Nawata, samugari@is.s.u-tokyo.ac.jp)
 
-hardstatus-string %030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.} %{-}%=%m/%d %02c
+;;; Put one or more semicolon for end-of-line style comments.
+
+;;; Set ^z to the escape key.
+escape ^z^z
 
 {raw screen
   [^z]
 }
 
-{screen snormal
-  [r]
-  [^r]
-}
+;;; Set up hardstatus string
+hardstatus-string %030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.} %{-}%=%m/%d %02c
 
+;;; Some key bindings behaves similar to the pre-bound key bindings in terms
+;;; of mode transition.
 {screen raw
   [w windowlist -b]
   ["^]" paste]
@@ -18,7 +21,15 @@ hardstatus-string %030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.} 
   [^v digraph]
 }
 
-{snormal snormal
+;;; r and ^r activates normal mode, if the current mode is screen mode.
+{screen normal
+  [r]
+  [^r]
+}
+
+;;; Key bindings in normal mode. These keys stays at normal mode after the
+;;; execution of bound commands. Therefore, You can continuously input the commands.
+{normal normal
   ; focus movement
   [j focus down]
   [k focus up]
@@ -46,7 +57,9 @@ hardstatus-string %030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.} 
   [^v digraph]
 }
 
-{snormal raw
+;;; Similar to the entry above, but these key bindings leave the normal
+;;; mode after the execution of bound commands.
+{normal raw
   ; window selection
   [0 select 0]
   [1 select 1]
@@ -65,12 +78,12 @@ hardstatus-string %030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.} 
 }
 
 ; layout
-{snormal snormal
+{normal normal
   [L layout new]
   [P layout prev]
   [N layout next]
   [D layout remove]
-#|
+#| This is a block comment.
   [ layout title]
   [ layout number]
   [ layout show]
