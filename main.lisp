@@ -122,9 +122,9 @@
 (defun input-invoke-p (comitemseq)
   (with-slots (command args) comitemseq
     (macrolet ((regardless-of-args (&rest strs)
-                 `(in-if (papply #'string= command) ,@strs))
+                 `(in-if (lambda (x) (string= command x)) ,@strs))
                (if-completely-same (&rest str-lsts)
-                 `(in-if (papply #'string= (make-evalarg comitemseq))
+                 `(in-if (lambda (x) (string= (make-evalarg comitemseq) x))
                          ,@(mapcar #`(evalargify ,@(if (consp a0) a0 (list a0))) str-lsts))))
       (cond ((or (regardless-of-args "colon" "windowlist")
                  (if-completely-same "stuff" "title" "paste" "process" "readreg"

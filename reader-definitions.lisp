@@ -20,6 +20,7 @@
     (symbol-name strsrc)
     (resolve-string strsrc)))
 
+;;; reader definitions
 (defun |[-reader| (strm c)
   (declare (ignore c))
   (destructuring-bind (key &rest cmdseq)

@@ -5,6 +5,8 @@
 
 (load "packages.lisp")
 
+(load "chiku-util-local.lisp")
+
 (load "main.lisp")
 
 (load "insert-mode.lisp")
@@ -15,8 +17,8 @@
 
 (defun main ()
   (let ((*package* (find-package :chiku.screen-keybind)))
-    (aif (third *posix-argv*)
-      (chiku.screen-keybind:read-rcsrc (second *posix-argv*) it)
+    (chiku.util:aif (third *posix-argv*)
+      (chiku.screen-keybind:read-rcsrc (second *posix-argv*) chiku.util:it)
       (chiku.screen-keybind:read-rcsrc (second *posix-argv*)))))
 
 (save-lisp-and-die "screen-keybind" :toplevel 'main :executable t)
