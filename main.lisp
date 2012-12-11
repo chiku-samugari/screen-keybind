@@ -1,4 +1,6 @@
 ;;;; Screen Keybind
+;;; Author : chiku (Takehiko Nawata, samugari@is.s.u-tokyo.ac.jp)
+;;;
 ;;; Nov. 27th 2012, chiku
 ;;; I start the second implementation that can treat all state transition.
 ;;; I use the terminology ``mode'' instead of ``state'' here.
@@ -33,6 +35,7 @@
 ;;;
 ;;; As you can see, we have to properly use 3 diffierent commands ``bind,''
 ;;; ``bind -c'' and ``bindkey.''
+
 (in-package :chiku.screen-keybind)
 
 (defun resolve-string (strsrc)

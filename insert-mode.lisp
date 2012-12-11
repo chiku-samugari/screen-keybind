@@ -1,6 +1,7 @@
 ;;;; Hold the control during the input.
+;;; Author: chiku (Takehiko Nawata, samugari.is.s.u-tokyo.ac.jp)
 ;;; Dec. 01st 2012, chiku
-;;; In order to keep snormal mode after the execution of a command
+;;; In order to keep normal mode after the execution of a command
 ;;; that comes with input, we have to avoid going back to the raw
 ;;; mode during the input.
 (in-package :chiku.screen-keybind)

@@ -1,6 +1,9 @@
 ;;;; Readers for reading more easier formats.
+;;; Author : chiku (Takehiko Nawata, samugari@is.s.u-tokyo.ac.jp)
+;;;
 ;;; Nov. 25th 2012, chiku
 ;;; This is the last step.
+
 (in-package :chiku.screen-keybind)
 
 (defmacro with-preserved-symbolcase (&body body)

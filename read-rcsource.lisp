@@ -1,6 +1,9 @@
 ;;;; Read screenrc source
+;;; Author : chiku (Takehiko Nawata, samugari@is.s.u-tokyo.ac.jp)
+;;;
 ;;; Tiny program for reading screenrc source and generate
 ;;; screenrc from it.
+
 (in-package :chiku.screen-keybind)
 
 (defun read-rcsrc (src-filename &optional (output t))

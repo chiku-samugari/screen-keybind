@@ -1,3 +1,6 @@
+;;;; Build screen-keybind
+;;; Author : chiku (Takehiko Nawata, samugari@is.s.u-tokyo.ac.jp)
+
 (in-package :cl-user)
 
 (load "packages.lisp")
