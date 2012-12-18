@@ -158,6 +158,7 @@ name.
 + colon (:)
 + semicolon (;)
 + sharp sign (#)
++ dot (.)
 + backslash (\\)
 + quotation mark (')
 + double quotation mark (")

@@ -16,7 +16,7 @@ hardstatus-string %030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.} 
 ;;; of mode transition.
 {screen raw
   [w windowlist -b]
-  ["^]" paste]
+  ["^]" paste "."]
   [t title]
   [^v digraph]
 }
