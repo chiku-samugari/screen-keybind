@@ -71,7 +71,6 @@ hardstatus-string %030=%{B.} %{-}%-w%{=b Mw}%{+u}%{+s}%n %t%{-}%{-}%{-}%+w%{B.} 
   [7 select 7]
   [8 select 8]
   [9 select 9]
-  [- select -]
   [w windowlist -b]
   ; others
   ["^[" copy]
