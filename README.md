@@ -84,8 +84,8 @@ key-command sequences.
 
 Since these keybindings are specified to stay at *normal* mode after the
 execution of bound commands, these key bindings are able to be used
-continuously. For example, stroke `j j j` in *normal* mode moves the window
-focus in upper direction 3 times; no input of escape key is required during this
+continuously. For example, stroke `k k k` in *normal* mode moves the window
+focus in upper direction for 3 times; no input of escape key is required during this
 operation.
 
 The mode transition can be followed with the execution of commands. For
@@ -110,7 +110,7 @@ stays to normal mode.
 We need a variation of escape key that can trigger the transition to the
 *normal* mode in order to utilize key bindings introduced in the previous
 subsection. Although such mode transition key has been already introduced
-during the previous subsection, the most ordinary way is add a transition key
+during previous subsections, the most ordinary way is add a transition key
 to *screen* mode as follows:
 
     {screen normal [^r]}
