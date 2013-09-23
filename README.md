@@ -258,7 +258,7 @@ insert mode*)
 
 miscs
 -----
-Author : chiku (Takehiko Nawata, samugari.is.s.u-tokyo.ac.jp)
+Author : chiku (Takehiko Nawata, samugari.penguin@gmail.com)
 License : MIT License
 
 ### For non-LISPers
